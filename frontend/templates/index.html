@@ -1,0 +1,2612 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ERP 進貨模組</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+  :root {
+    --bg:           #f8f7ff;
+    --surface:      #ffffff;
+    --surface2:     #f3f1ff;
+    --border:       #e2dff7;
+    --sidebar-bg:   #ede9fe;
+    --accent:       #7c5cfc;
+    --accent-light: #ede9fe;
+    --accent-text:  #5b3fd4;
+    --accent-hover: rgba(124,92,252,.12);
+    --green:        #059669;
+    --green-bg:     #d1fae5;
+    --yellow:       #d97706;
+    --yellow-bg:    #fef3c7;
+    --red:          #dc2626;
+    --red-bg:       #fee2e2;
+    --blue:         #2563eb;
+    --blue-bg:      #dbeafe;
+    --orange:       #ea580c;
+    --orange-bg:    #ffedd5;
+    --text:         #1e1b4b;
+    --muted:        #7c6fa8;
+    --radius:       10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+
+  /* Sidebar */
+  #sidebar { width: 220px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+  .logo { padding: 22px 20px 18px; border-bottom: 1px solid var(--border); }
+  .logo h1 { font-size: 15px; font-weight: 700; color: var(--accent-text); letter-spacing: .05em; }
+  .logo p  { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  nav { padding: 12px 8px; flex: 1; overflow-y: auto; }
+  nav a { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius); text-decoration: none; color: var(--muted); font-size: 13.5px; font-weight: 500; cursor: pointer; transition: all .15s; margin-bottom: 2px; }
+  nav a:hover { color: var(--accent-text); background: var(--accent-hover); }
+  nav a.active { color: #fff; background: var(--accent); }
+  nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .nav-section { font-size: 10px; font-weight: 700; letter-spacing: .1em; color: #b0a8d4; padding: 10px 12px 4px; text-transform: uppercase; }
+
+  /* Main */
+  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  #topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 28px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+  #topbar h2 { font-size: 16px; font-weight: 600; color: var(--text); }
+  .status-pill { font-size: 12px; color: var(--green); display: flex; align-items: center; gap: 6px; }
+  .status-pill::before { content:''; width:7px; height:7px; border-radius:50%; background:var(--green); display:inline-block; }
+  #content { flex: 1; overflow-y: auto; padding: 28px; }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px,1fr)); gap: 14px; margin-bottom: 26px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+  .card .label { font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+  .card .value { font-size: 26px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .card.c-purple .value { color: var(--accent-text); }
+  .card.c-green  .value { color: var(--green); }
+  .card.c-yellow .value { color: var(--yellow); }
+  .card.c-red    .value { color: var(--red); }
+  .card.c-blue   .value { color: var(--blue); }
+  .card.c-orange .value { color: var(--orange); }
+
+  /* Section */
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 22px; }
+  .section-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .section-header h3 { font-size: 14px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-bottom: 1px solid var(--border); }
+  td { padding: 11px 16px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+
+  /* Badge */
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: .03em; }
+  .badge.draft     { background:#f3f4f6;            color:#6b7280; }
+  .badge.sent      { background:var(--orange-bg);   color:var(--orange); }
+  .badge.confirmed { background:var(--blue-bg);     color:var(--blue); }
+  .badge.cancelled { background:var(--red-bg);      color:var(--red); }
+  .badge.partial   { background:var(--yellow-bg);   color:var(--yellow); }
+  .badge.received  { background:var(--green-bg);    color:var(--green); }
+  .badge.closed    { background:var(--red-bg);      color:var(--red); }
+  .badge.matched   { background:var(--green-bg);    color:var(--green); }
+  .badge.disputed  { background:var(--red-bg);      color:var(--red); }
+  .badge.paid      { background:var(--accent-light);color:var(--accent-text); }
+  .badge.pending   { background:var(--yellow-bg);   color:var(--yellow); }
+  .badge.active    { background:var(--green-bg);    color:var(--green); }
+  .badge.inactive  { background:var(--red-bg);      color:var(--red); }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; font-family: inherit; transition: all .15s; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-text); }
+  .btn-confirm { background: var(--green); color: #fff; }
+  .btn-confirm:hover { background: #047857; }
+  .btn-send { background: var(--orange); color: #fff; }
+  .btn-send:hover { background: #c2410c; }
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-danger { background: var(--red-bg); color: var(--red); border: 1px solid rgba(220,38,38,.25); }
+
+  /* Flow indicator */
+  .flow-bar { display: flex; align-items: center; gap: 0; margin-bottom: 24px; }
+  .flow-step { display: flex; align-items: center; gap: 8px; padding: 8px 18px; background: var(--surface); border: 1px solid var(--border); font-size: 12px; font-weight: 600; color: var(--muted); }
+  .flow-step:first-child { border-radius: 8px 0 0 8px; }
+  .flow-step:last-child  { border-radius: 0 8px 8px 0; }
+  .flow-step.active { background: var(--accent-light); border-color: var(--accent); color: var(--accent-text); }
+  .flow-step.done   { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+  .flow-arrow { font-size: 14px; color: var(--muted); margin: 0 -1px; z-index: 1; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+  .tab { padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--muted); border: 1px solid transparent; background: none; font-family: inherit; transition: all .15s; }
+  .tab.active { color: var(--accent); border-color: var(--accent); background: var(--accent-light); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* Modal */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; align-items: center; justify-content: center; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 28px; width: 620px; max-width: 96vw; max-height: 88vh; overflow-y: auto; }
+  .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 20px; color: var(--text); }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-row { margin-bottom: 12px; }
+  .form-row.full { grid-column: 1 / -1; }
+  .form-row label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 500; }
+  .form-row input, .form-row select, .form-row textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 13px; font-family: inherit; outline: none; transition: border-color .15s; }
+  .form-row input:focus, .form-row select:focus, .form-row textarea:focus { border-color: var(--accent); }
+  .form-row select option { background: var(--surface); }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; padding: 10px 0; }
+  .checkbox-row input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+  .checkbox-row label { font-size: 13px; color: var(--text); cursor: pointer; margin: 0; }
+  .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  .modal-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  .items-header { display: grid; grid-template-columns: 110px 1fr 65px 55px 85px 80px 28px; gap: 6px; margin-bottom: 4px; min-width: 0; }
+  .items-header span { font-size: 11px; color: var(--muted); font-weight: 600; overflow: hidden; }
+  .item-row { display: grid; grid-template-columns: 110px 1fr 65px 55px 85px 80px 28px; gap: 6px; margin-bottom: 6px; align-items: center; min-width: 0; }
+  .item-row input, .item-row select { padding: 7px 8px; font-size: 12px; min-width: 0; width: 100%; }
+  .remove-btn { background: none; border: none; color: var(--red); cursor: pointer; font-size: 18px; padding: 0; line-height: 1; }
+
+  .rfq-link { font-size: 11px; color: var(--accent-text); text-decoration: underline; cursor: pointer; }
+
+  /* ── 搜尋 ── */
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0 12px;
+    height: 36px;
+    min-width: 220px;
+  }
+  .search-bar input {
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 13px;
+    color: var(--text);
+    width: 100%;
+    font-family: inherit;
+  }
+  .search-bar input::placeholder { color: var(--muted); }
+  .search-icon { color: var(--muted); font-size: 14px; }
+
+  .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .text-right { text-align: right; }
+  .empty { text-align: center; color: var(--muted); padding: 32px; font-size: 13px; }
+  .tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 2px 8px; border-radius: 6px; background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+
+
+  /* First-use guide */
+  .guide-backdrop { position: fixed; inset: 0; background: rgba(30,27,75,.52); z-index: 9000; display: none; }
+  .guide-backdrop.open { display: block; }
+  .guide-card { position: fixed; z-index: 9002; width: min(360px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; box-shadow: 0 18px 50px rgba(30,27,75,.24); display: none; }
+  .guide-card.open { display: block; }
+  .guide-card h3 { font-size: 15px; margin-bottom: 8px; color: var(--text); }
+  .guide-card p { font-size: 13px; line-height: 1.6; color: var(--muted); margin-bottom: 14px; }
+  .guide-actions { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  .guide-step-count { font-size: 12px; color: var(--muted); }
+  .guide-highlight { position: relative; z-index: 9001; box-shadow: 0 0 0 4px rgba(124,92,252,.28), 0 0 0 9999px rgba(30,27,75,.10); border-radius: 12px; }
+
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div id="sidebar">
+  <div class="logo">
+    <h1>⚡ ERP System</h1>
+    <p>進貨管理模組 v2.0</p>
+  </div>
+  <nav>
+    <a onclick="showPage('dashboard')" id="nav-dashboard"><span class="icon">📊</span>總覽</a>
+    <a onclick="showPage('reports')" id="nav-reports"><span class="icon">📈</span>報表中心</a>
+    <div class="nav-section">採購流程</div>
+    <a onclick="showPage('rfq')"       id="nav-rfq"><span class="icon">📝</span>詢價單</a>
+    <a onclick="showPage('po')"        id="nav-po"><span class="icon">📋</span>採購訂單</a>
+    <a onclick="showPage('receiving')" id="nav-receiving"><span class="icon">📦</span>入庫作業</a>
+    <a onclick="showPage('invoices')"  id="nav-invoices"><span class="icon">🧾</span>發票對帳</a>
+    <div class="nav-section">銷貨流程</div>
+    <a onclick="showPage('customers')"     id="nav-customers"><span class="icon">👥</span>客戶管理</a>
+    <a onclick="showPage('sales_orders')"  id="nav-sales_orders"><span class="icon">🧾</span>銷貨訂單</a>
+    <a onclick="showPage('shipments')"     id="nav-shipments"><span class="icon">🚚</span>出貨作業</a>
+    <a onclick="showPage('sales_invoices')" id="nav-sales_invoices"><span class="icon">💰</span>應收帳款</a>
+    <div class="nav-section">人資模組</div>
+    <a onclick="showPage('employees')"  id="nav-employees"><span class="icon">👤</span>員工管理</a>
+    <a onclick="showPage('departments')" id="nav-departments"><span class="icon">🏢</span>部門管理</a>
+    <a onclick="showPage('attendance')" id="nav-attendance"><span class="icon">🕐</span>出勤紀錄</a>
+    <a onclick="showPage('leaves')"     id="nav-leaves"><span class="icon">📅</span>請假管理</a>
+    <a onclick="showPage('payroll')"    id="nav-payroll"><span class="icon">💵</span>薪資管理</a>
+    <div class="nav-section">管理</div>
+    <a onclick="showPage('products')"  id="nav-products"><span class="icon">📦</span>商品管理</a>
+    <a onclick="showPage('suppliers')" id="nav-suppliers"><span class="icon">🏭</span>供應商管理</a>
+    <a onclick="showPage('inventory')" id="nav-inventory"><span class="icon">🗄️</span>庫存查詢</a>
+  </nav>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <div id="topbar">
+    <h2 id="page-title">總覽</h2>
+    <div style="display:flex;align-items:center;gap:10px;"><button class="btn btn-ghost btn-sm" onclick="startGuide(true)">❔ 使用導覽</button><span class="status-pill">API 連線中</span></div>
+  </div>
+  <div id="content"><div class="empty">載入中…</div></div>
+</div>
+
+<!-- ══ Modal: 新增/編輯詢價單 ══ -->
+<div class="overlay" id="modal-rfq">
+  <div class="modal">
+    <h3 id="rfq-modal-title">📝 新增詢價單</h3>
+    <input type="hidden" id="rfq-id" />
+    <div class="form-grid">
+      <div class="form-row">
+        <label>供應商 *</label>
+        <select id="rfq-supplier"></select>
+      </div>
+      <div class="form-row">
+        <label>供應商編碼</label>
+        <input id="rfq-sup-code" readonly placeholder="選擇供應商後自動帶入" style="color:var(--muted)" />
+      </div>
+      <div class="form-row">
+        <label>預設稅別</label>
+        <input id="rfq-sup-tax" readonly placeholder="—" style="color:var(--muted)" />
+      </div>
+      <div class="form-row">
+        <label>訂單截止日</label>
+        <input id="rfq-deadline" type="date" />
+      </div>
+      <div class="form-row">
+        <label>預計到貨日</label>
+        <input id="rfq-expected" type="date" />
+      </div>
+      <div class="form-row full">
+        <label>交貨地點 / 倉庫</label>
+        <input id="rfq-location" placeholder="例：台北倉、高雄廠" />
+      </div>
+      <div class="form-row full">
+        <div class="checkbox-row">
+          <input type="checkbox" id="rfq-confirm-delivery" />
+          <label for="rfq-confirm-delivery">向供應商確認供貨日期</label>
+        </div>
+      </div>
+      <div class="form-row full">
+        <label>備註 / 附註</label>
+        <textarea id="rfq-note" rows="2" placeholder="選填"></textarea>
+      </div>
+    </div>
+    <hr class="modal-divider" />
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <label style="font-size:12px;color:var(--muted);font-weight:600;">詢價明細</label>
+      <button class="btn btn-ghost btn-sm" onclick="addItemRow('rfq-items')">＋ 新增品項</button>
+    </div>
+    <div class="items-header"><span>SKU</span><span>品名</span><span>數量</span><span>單位</span><span>單價</span><span>稅別</span><span></span></div>
+    <div id="rfq-items"></div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-rfq')">取消</button>
+      <button class="btn btn-primary" id="rfq-submit-btn" onclick="submitRFQ()">✓ 建立詢價單</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: 新增/編輯供應商 ══ -->
+<div class="overlay" id="modal-supplier">
+  <div class="modal">
+    <h3 id="supplier-modal-title">🏭 新增供應商</h3>
+    <input type="hidden" id="s-id" />
+    <div class="form-grid">
+      <div class="form-row"><label>公司名稱 *</label><input id="s-name" placeholder="台灣電子材料有限公司" /></div>
+      <div class="form-row"><label>供應商編碼</label><input id="s-code" placeholder="SUP-001" /></div>
+      <div class="form-row"><label>聯絡人 *</label><input id="s-contact" placeholder="王大明" /></div>
+      <div class="form-row"><label>電話</label><input id="s-phone" placeholder="02-1234-5678" /></div>
+      <div class="form-row full"><label>Email</label><input id="s-email" type="email" placeholder="contact@example.com" /></div>
+      <div class="form-row full"><label>付款天數</label><input id="s-terms" type="number" value="30" /></div>
+      <div class="form-row full">
+        <label>預設稅別</label>
+        <select id="s-tax">
+          <option value="taxable">應稅 5%</option>
+          <option value="zero">零稅率</option>
+          <option value="exempt">免稅</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-supplier')">取消</button>
+      <button class="btn btn-primary" id="supplier-submit-btn" onclick="submitSupplier()">✓ 儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: 停用確認 ══ -->
+<div class="overlay" id="modal-deactivate">
+  <div class="modal" style="width:420px;">
+    <h3>⚠️ 確認停用</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:8px;">即將停用供應商：</p>
+    <p style="font-size:15px;font-weight:600;margin-bottom:20px;" id="deactivate-name"></p>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:24px;">停用後此供應商將無法建立新詢價單，但歷史紀錄會保留。</p>
+    <input type="hidden" id="deactivate-id" />
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-deactivate')">取消</button>
+      <button class="btn btn-danger" onclick="confirmDeactivate()">確認停用</button>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="modal-receiving">
+  <div class="modal">
+    <h3>📦 登錄入庫</h3>
+    <div class="form-row"><label>採購訂單</label><select id="rec-po" onchange="loadPOItems()"></select></div>
+    <div id="rec-items-area"></div>
+    <div class="form-row"><label>備註</label><input id="rec-note" placeholder="選填" /></div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-receiving')">取消</button>
+      <button class="btn btn-confirm" onclick="submitReceiving()">✓ 確認入庫</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: 發票 ══ -->
+<div class="overlay" id="modal-invoice">
+  <div class="modal">
+    <h3>🧾 登錄發票</h3>
+    <div class="form-grid">
+      <div class="form-row full"><label>採購訂單</label><select id="inv-po"></select></div>
+      <div class="form-row"><label>發票號碼</label><input id="inv-no" placeholder="AB-12345678" /></div>
+      <div class="form-row"><label>發票日期</label><input id="inv-date" type="date" /></div>
+      <div class="form-row"><label>未稅金額</label><input id="inv-amount" type="number" step="0.01" placeholder="0.00" /></div>
+      <div class="form-row"><label>稅額</label><input id="inv-tax" type="number" step="0.01" value="0" /></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-invoice')">取消</button>
+      <button class="btn btn-primary" onclick="submitInvoice()">✓ 對帳送出</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: 詢價單詳情 ══ -->
+<div class="overlay" id="modal-rfq-detail">
+  <div class="modal" style="width:680px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <h3 style="margin:0;" id="rfq-detail-title">📝 詢價單詳情</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-rfq-detail')">✕ 關閉</button>
+    </div>
+    <div id="rfq-detail-body"></div>
+  </div>
+</div>
+
+<!-- ══ Modal: 採購訂單詳情 ══ -->
+<div class="overlay" id="modal-po-detail">
+  <div class="modal" style="width:680px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <h3 style="margin:0;" id="po-detail-title">📋 採購訂單詳情</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-po-detail')">✕ 關閉</button>
+    </div>
+    <div id="po-detail-body"></div>
+  </div>
+</div>
+
+<!-- ══ Modal: 新增/編輯商品 ══ -->
+<div class="overlay" id="modal-product">
+  <div class="modal" style="width:480px;">
+    <h3 id="product-modal-title">📦 新增商品</h3>
+    <input type="hidden" id="p-sku-orig" />
+    <div class="form-grid">
+      <div class="form-row"><label>SKU *</label><input id="p-sku" placeholder="IC-001" /></div>
+      <div class="form-row"><label>品名 *</label><input id="p-name" placeholder="微控制器 STM32" /></div>
+      <div class="form-row"><label>單位 *</label><input id="p-unit" placeholder="顆" /></div>
+      <div class="form-row"><label>單位成本</label><input id="p-cost" type="number" step="0.01" placeholder="0.00" /></div>
+      <div class="form-row full">
+        <label>稅別</label>
+        <select id="p-tax">
+          <option value="taxable">應稅 5%</option>
+          <option value="zero">零稅率</option>
+          <option value="exempt">免稅</option>
+        </select>
+      </div>
+      <div class="form-row full" id="p-qty-row">
+        <label>初始庫存數量</label>
+        <input id="p-qty" type="number" step="0.01" placeholder="0" value="0" />
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-product')">取消</button>
+      <button class="btn btn-primary" id="product-submit-btn" onclick="submitProduct()">✓ 儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: CSV 匯入 ══ -->
+<div class="overlay" id="modal-csv">
+  <div class="modal" style="width:560px;">
+    <h3>📥 CSV 批次匯入商品</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">格式：SKU, 品名, 單位, 單位成本, 稅別（taxable/zero/exempt）</p>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:monospace;font-size:12px;color:var(--muted);margin-bottom:14px;">
+      IC-001,微控制器 STM32,顆,85,taxable<br>
+      RS-002,電阻 10kΩ 1/4W,包,12.5,exempt<br>
+      CB-004,USB-C 連接器,個,22,zero
+    </div>
+    <div class="form-row">
+      <label>貼上 CSV 內容</label>
+      <textarea id="csv-input" rows="8" placeholder="貼上 CSV 內容，或上傳檔案後自動帶入…" style="font-family:monospace;font-size:12px;"></textarea>
+    </div>
+    <div class="form-row">
+      <label>或上傳 CSV 檔案</label>
+      <input type="file" id="csv-file" accept=".csv" onchange="loadCSVFile(this)" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;" />
+    </div>
+    <div id="csv-preview" style="margin-top:8px;font-size:12px;color:var(--muted);"></div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-csv')">取消</button>
+      <button class="btn btn-primary" onclick="submitCSV()">✓ 匯入</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8000/api';
+async function api(method, path, body) {
+  const res = await fetch(API + path, { method, headers:{'Content-Type':'application/json'}, body: body ? JSON.stringify(body) : undefined });
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail||`HTTP ${res.status}`); }
+  if (res.status === 204) return null;
+  return res.json();
+}
+const GET   = p    => api('GET',   p);
+const POST  = (p,b)=> api('POST',  p, b);
+const PATCH = (p,b)=> api('PATCH', p, b);
+
+// ── Nav ──────────────────────────────────────────────
+const titles = { dashboard:'總覽', reports:'報表中心', rfq:'詢價單', po:'採購訂單', receiving:'入庫作業', invoices:'採購發票', suppliers:'供應商管理', products:'商品管理', inventory:'庫存查詢', customers:'客戶管理', sales_orders:'銷貨訂單', shipments:'出貨作業', sales_invoices:'應收帳款', employees:'員工管理', departments:'部門管理', attendance:'出勤紀錄', leaves:'請假管理', payroll:'薪資管理' };
+function showPage(page) {
+  document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
+  document.getElementById('nav-'+page).classList.add('active');
+  document.getElementById('page-title').textContent = titles[page];
+  document.getElementById('content').innerHTML = '<div class="empty">載入中…</div>';
+  ({dashboard:renderDashboard, reports:renderReports, rfq:renderRFQ, po:renderPO, receiving:renderReceiving, invoices:renderInvoices, suppliers:renderSuppliers, products:renderProducts, inventory:renderInventory, customers:renderCustomers, sales_orders:renderSalesOrders, shipments:renderShipments, sales_invoices:renderSalesInvoices, employees:renderEmployees, departments:renderDepartments, attendance:renderAttendance, leaves:renderLeaves, payroll:renderPayroll}[page])();
+}
+
+// ── Utils ─────────────────────────────────────────────
+function badge(s) { return `<span class="badge ${s}">${lbl(s)}</span>`; }
+function lbl(s) { return {draft:'草稿',sent:'已傳送',confirmed:'已確認',cancelled:'已取消',partial:'部分入庫',received:'已入庫',closed:'已關閉',matched:'已對帳',disputed:'有爭議',paid:'已付款',pending:'待對帳',active:'啟用',inactive:'停用',shipped:'已出貨',overdue:'逾期'}[s]||s; }
+function taxLbl(t) { return {taxable:'應稅 5%', zero:'零稅率', exempt:'免稅'}[t]||t||'-'; }
+function money(v) { return 'NT$ '+Number(v).toLocaleString('zh-TW',{minimumFractionDigits:2}); }
+function fdate(s) { return s ? s.split('T')[0] : '-'; }
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function toast(msg, ok=true) {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;background:${ok?'var(--green)':'var(--red)'};color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.15)`;
+  t.textContent = msg; document.body.appendChild(t); setTimeout(()=>t.remove(), 2800);
+}
+
+function escapeHtml(v) {
+  return String(v ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+}
+async function setPOStatus(id, status) {
+  try {
+    await PATCH(`/purchase-orders/${id}/status`, {status});
+    toast(status==='closed' ? '採購單已關閉' : '採購單狀態已更新');
+    closeModal('modal-po-detail'); renderPO();
+  } catch(e) { toast(e.message,false); }
+}
+async function cancelRFQ(id) {
+  if (!confirm('確定要取消這張詢價單嗎？')) return;
+  try { await PATCH(`/rfqs/${id}/status`, {status:'cancelled'}); toast('詢價單已取消'); renderRFQ(); }
+  catch(e) { toast(e.message,false); }
+}
+async function closeSO(id) {
+  if (!confirm('確定要關閉這張銷貨訂單嗎？')) return;
+  try { await PATCH(`/sales-orders/${id}/status`, {status:'closed'}); toast('銷貨訂單已關閉'); closeModal('modal-so-detail'); renderSalesOrders(); }
+  catch(e) { toast(e.message,false); }
+}
+
+// ── Dashboard ─────────────────────────────────────────
+async function renderDashboard() {
+  const [rfqList, poList, invList, sups] = await Promise.all([GET('/rfqs'), GET('/purchase-orders'), GET('/invoices'), GET('/suppliers')]);
+  const c = document.getElementById('content');
+  c.innerHTML = `
+    <div class="flow-bar">
+      <div class="flow-step active"><span>📝</span> 詢價單</div>
+      <div class="flow-arrow">›</div>
+      <div class="flow-step active"><span>📋</span> 採購訂單</div>
+      <div class="flow-arrow">›</div>
+      <div class="flow-step active"><span>📦</span> 入庫作業</div>
+      <div class="flow-arrow">›</div>
+      <div class="flow-step active"><span>🧾</span> 發票對帳</div>
+    </div>
+    <div class="cards">
+      <div class="card c-purple"><div class="label">詢價單</div><div class="value">${rfqList.length}</div></div>
+      <div class="card c-orange"><div class="label">待確認詢價</div><div class="value">${rfqList.filter(r=>r.status==='draft'||r.status==='sent').length}</div></div>
+      <div class="card c-blue"><div class="label">採購訂單</div><div class="value">${poList.length}</div></div>
+      <div class="card c-yellow"><div class="label">待入庫</div><div class="value">${poList.filter(p=>p.status==='confirmed'||p.status==='partial').length}</div></div>
+      <div class="card c-red"><div class="label">待對帳發票</div><div class="value">${invList.filter(i=>i.status==='pending'||i.status==='disputed').length}</div></div>
+      <div class="card c-green"><div class="label">供應商</div><div class="value">${sups.filter(s=>s.status==='active').length}</div></div>
+    </div>
+    <div class="section">
+      <div class="section-header"><h3>最近詢價單</h3><button class="btn btn-primary btn-sm" onclick="showPage('rfq')">查看全部</button></div>
+      <table><thead><tr><th>詢價單號</th><th>供應商</th><th>截止日</th><th>狀態</th><th>對應採購單</th></tr></thead>
+      <tbody>${rfqList.slice(-5).reverse().map(r=>`<tr>
+        <td class="mono">${r.id}</td><td>${r.supplier_name}</td>
+        <td>${r.deadline||'-'}</td><td>${badge(r.status)}</td>
+        <td>${r.po_id?`<span class="mono rfq-link" onclick="showPODetail('${r.po_id}')">${r.po_id}</span>`:'-'}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>`;
+}
+
+// ── RFQ ──────────────────────────────────────────────
+let rfqFilter = 'all';
+async function renderRFQ() {
+  const data = await GET('/rfqs');
+  const filters = ['all','draft','sent','confirmed','cancelled'];
+  const filtered = rfqFilter==='all' ? data : data.filter(r=>r.status===rfqFilter);
+  const c = document.getElementById('content');
+  c.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div class="tabs">${filters.map(f=>`<button class="tab ${rfqFilter===f?'active':''}" onclick="rfqFilter='${f}';renderRFQ()">${f==='all'?'全部':lbl(f)}</button>`).join('')}</div>
+      <button class="btn btn-primary" onclick="openAddRFQ()">＋ 新增詢價單</button>
+    </div>
+    <div class="section">
+      <div class="section-header"><h3>詢價單列表 (${filtered.length})</h3></div>
+      <table><thead><tr><th>單號</th><th>供應商</th><th>供應商編碼</th><th>截止日</th><th>預計到貨</th><th>交貨地點</th><th>金額</th><th>狀態</th><th>操作</th></tr></thead>
+      <tbody>${filtered.length===0?'<tr><td colspan="9" class="empty">無資料</td></tr>':filtered.map(r=>`<tr>
+        <td class="mono">${r.id}</td>
+        <td>${r.supplier_name}</td>
+        <td class="mono">${r.supplier_code||'-'}</td>
+        <td>${r.deadline||'-'}</td>
+        <td>${r.expected_date||'-'}</td>
+        <td>${r.delivery_location||'-'}</td>
+        <td class="mono">${money(r.total_amount)}</td>
+        <td>${badge(r.status)}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="showRFQDetail('${r.id}')">明細</button>
+          ${r.status==='draft'?`<button class="btn btn-ghost btn-sm" onclick="openEditRFQ('${r.id}')">✏️ 編輯</button>`:''}
+          ${r.status==='draft'?`<button class="btn btn-send btn-sm" onclick="sendRFQ('${r.id}')">傳送</button>`:''}
+          ${r.status==='sent'||r.status==='draft'?`<button class="btn btn-confirm btn-sm" onclick="confirmRFQ('${r.id}')">確認→PO</button>`:''}
+          ${['draft','sent'].includes(r.status)?`<button class="btn btn-danger btn-sm" onclick="cancelRFQ('${r.id}')">取消</button>`:''}
+          ${r.po_id?`<span class="tag mono" onclick="showPODetail('${r.po_id}')" style="cursor:pointer;">${r.po_id}</span>`:''}
+        </td>
+      </tr>`).join('')}</tbody></table>
+    </div>`;
+}
+
+function addItemRow(containerId) {
+  const supOpt = document.querySelector('#rfq-supplier option:checked');
+  const supTax = supOpt ? supOpt.dataset.tax : 'taxable';
+  const row = document.createElement('div');
+  row.className = 'item-row';
+  row.innerHTML = `
+    <input placeholder="IC-001" onchange="autoFillTax(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();autoFillTax(this)}"/>
+    <input placeholder="品名"/>
+    <input type="number" placeholder="100" min="1"/>
+    <input placeholder="顆"/>
+    <input type="number" placeholder="0" min="0" step="0.01"/>
+    <select onchange="this.dataset.manual=1">
+      <option value="taxable" ${supTax==='taxable'?'selected':''}>應稅 5%</option>
+      <option value="zero"    ${supTax==='zero'?'selected':''}>零稅率</option>
+      <option value="exempt"  ${supTax==='exempt'?'selected':''}>免稅</option>
+    </select>
+    <button class="remove-btn" onclick="this.parentElement.remove()">×</button>`;
+  document.getElementById(containerId).appendChild(row);
+}
+
+const inventoryCache = {};
+async function autoFillTax(skuInput) {
+  const sku = skuInput.value.trim();
+  if (!sku) return;
+  if (!inventoryCache[sku]) {
+    try { inventoryCache[sku] = await GET(`/inventory/${sku}`); } catch { return; }
+  }
+  const item = inventoryCache[sku];
+  const row = skuInput.parentElement;
+  const inputs = row.querySelectorAll('input');
+  const taxSel = row.querySelector('select');
+  if (!inputs[1].value) inputs[1].value = item.name;
+  if (!inputs[3].value) inputs[3].value = item.unit;
+  if (!inputs[4].value) inputs[4].value = item.unit_cost;
+  if (item.tax_type && !taxSel.dataset.manual) taxSel.value = item.tax_type;
+}
+
+async function openAddRFQ() {
+  document.getElementById('rfq-modal-title').textContent = '📝 新增詢價單';
+  document.getElementById('rfq-id').value = '';
+  document.getElementById('rfq-submit-btn').textContent = '✓ 建立詢價單';
+  const sups = await GET('/suppliers');
+  const sel = document.getElementById('rfq-supplier');
+  sel.innerHTML = sups.filter(s=>s.status==='active').map(s=>`<option value="${s.id}" data-code="${s.supplier_code||''}" data-tax="${s.tax_type||'taxable'}">${s.name}</option>`).join('');
+  sel.onchange = () => {
+    const opt = sel.options[sel.selectedIndex];
+    document.getElementById('rfq-sup-code').value = opt.dataset.code || '';
+    document.getElementById('rfq-sup-tax').value  = taxLbl(opt.dataset.tax);
+    document.querySelectorAll('#rfq-items .item-row select').forEach(s => {
+      if (!s.dataset.manual) s.value = opt.dataset.tax;
+    });
+  };
+  sel.dispatchEvent(new Event('change'));
+  document.getElementById('rfq-deadline').value = '';
+  document.getElementById('rfq-expected').value = new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+  document.getElementById('rfq-location').value = '';
+  document.getElementById('rfq-confirm-delivery').checked = false;
+  document.getElementById('rfq-note').value = '';
+  document.getElementById('rfq-items').innerHTML = '';
+  addItemRow('rfq-items');
+  openModal('modal-rfq');
+}
+
+async function openEditRFQ(id) {
+  document.getElementById('rfq-modal-title').textContent = '✏️ 編輯詢價單';
+  document.getElementById('rfq-id').value = id;
+  document.getElementById('rfq-submit-btn').textContent = '✓ 儲存變更';
+  const sups = await GET('/suppliers');
+  const rfq  = await GET(`/rfqs/${id}`);
+  const sel  = document.getElementById('rfq-supplier');
+  sel.innerHTML = sups.filter(s=>s.status==='active').map(s=>`<option value="${s.id}" data-code="${s.supplier_code||''}" data-tax="${s.tax_type||'taxable'}">${s.name}</option>`).join('');
+  sel.value = rfq.supplier_id;
+  sel.onchange = () => {
+    const opt = sel.options[sel.selectedIndex];
+    document.getElementById('rfq-sup-code').value = opt.dataset.code || '';
+    document.getElementById('rfq-sup-tax').value  = taxLbl(opt.dataset.tax);
+    document.querySelectorAll('#rfq-items .item-row select').forEach(s => {
+      if (!s.dataset.manual) s.value = opt.dataset.tax;
+    });
+  };
+  sel.dispatchEvent(new Event('change'));
+  document.getElementById('rfq-deadline').value           = rfq.deadline || '';
+  document.getElementById('rfq-expected').value           = rfq.expected_date || '';
+  document.getElementById('rfq-location').value           = rfq.delivery_location || '';
+  document.getElementById('rfq-confirm-delivery').checked = rfq.confirm_delivery || false;
+  document.getElementById('rfq-note').value               = rfq.note || '';
+  document.getElementById('rfq-items').innerHTML = '';
+  for (const item of rfq.items) {
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.innerHTML = `
+      <input value="${item.sku}" onchange="autoFillTax(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();autoFillTax(this)}"/>
+      <input value="${item.name}"/>
+      <input type="number" value="${item.qty}" min="1"/>
+      <input value="${item.unit}"/>
+      <input type="number" value="${item.unit_price}" min="0" step="0.01"/>
+      <select data-manual="1">
+        <option value="taxable" ${item.tax_type==='taxable'?'selected':''}>應稅 5%</option>
+        <option value="zero"    ${item.tax_type==='zero'   ?'selected':''}>零稅率</option>
+        <option value="exempt"  ${item.tax_type==='exempt' ?'selected':''}>免稅</option>
+      </select>
+      <button class="remove-btn" onclick="this.parentElement.remove()">×</button>`;
+    document.getElementById('rfq-items').appendChild(row);
+  }
+  openModal('modal-rfq');
+}
+
+async function submitRFQ() {
+  const id = document.getElementById('rfq-id').value;
+  const rows = document.querySelectorAll('#rfq-items .item-row');
+  const items = Array.from(rows).map(r=>{
+    const ins = r.querySelectorAll('input');
+    const tax = r.querySelector('select')?.value || null;
+    return { sku:ins[0].value, name:ins[1].value, qty:parseInt(ins[2].value), unit:ins[3].value, unit_price:parseFloat(ins[4].value)||0, tax_type:tax };
+  }).filter(i=>i.sku&&i.name&&i.qty>0);
+  if (!items.length) { toast('請至少新增一個品項',false); return; }
+  const payload = {
+    supplier_id:       document.getElementById('rfq-supplier').value,
+    deadline:          document.getElementById('rfq-deadline').value||null,
+    expected_date:     document.getElementById('rfq-expected').value||null,
+    delivery_location: document.getElementById('rfq-location').value||null,
+    confirm_delivery:  document.getElementById('rfq-confirm-delivery').checked,
+    note:              document.getElementById('rfq-note').value||null,
+    items,
+  };
+  try {
+    if (id) {
+      await PATCH(`/rfqs/${id}`, payload);
+      toast('詢價單已更新！');
+    } else {
+      await POST('/rfqs', payload);
+      toast('詢價單已建立！');
+    }
+    closeModal('modal-rfq'); rfqFilter='all'; renderRFQ();
+  } catch(e) { toast(e.message,false); }
+}
+
+async function sendRFQ(id) {
+  await PATCH(`/rfqs/${id}/status`, {status:'sent'});
+  toast('已標記為已傳送！'); renderRFQ();
+}
+
+async function confirmRFQ(id) {
+  try {
+    const res = await POST(`/rfqs/${id}/confirm`);
+    toast(`詢價單已確認！採購單 ${res.po.id} 已建立`);
+    rfqFilter = 'all'; renderRFQ();
+  } catch(e) { toast(e.message,false); }
+}
+
+async function showRFQDetail(id) {
+  const r = await GET(`/rfqs/${id}`);
+  document.getElementById('rfq-detail-title').textContent = `📝 詢價單 ${r.id}`;
+  document.getElementById('rfq-detail-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;margin-bottom:16px;font-size:13px;">
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">供應商</span><div style="margin-top:3px;font-weight:500;">${r.supplier_name}</div></div>
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">供應商編碼</span><div class="mono" style="margin-top:3px;">${r.supplier_code||'-'}</div></div>
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">訂單截止日</span><div style="margin-top:3px;">${r.deadline||'-'}</div></div>
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">預計到貨日</span><div style="margin-top:3px;">${r.expected_date||'-'}</div></div>
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">交貨地點</span><div style="margin-top:3px;">${r.delivery_location||'-'}</div></div>
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">狀態</span><div style="margin-top:3px;">${badge(r.status)}</div></div>
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">確認供貨日期</span><div style="margin-top:3px;">${r.confirm_delivery?'✅ 是':'—'}</div></div>
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">對應採購單</span><div class="mono" style="margin-top:3px;">${r.po_id||'-'}</div></div>
+      ${r.note?`<div style="grid-column:1/-1;"><span style="color:var(--muted);font-size:11px;font-weight:600;">備註</span><div style="margin-top:3px;">${r.note}</div></div>`:''}
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:12px 0 14px;">
+    <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;">詢價明細</div>
+    <table style="font-size:12px;">
+      <thead><tr><th>SKU</th><th>品名</th><th>數量</th><th>單位</th><th>稅別</th><th class="text-right">單價</th><th class="text-right">稅額</th><th class="text-right">小計</th></tr></thead>
+      <tbody>${r.items.map(i=>`<tr>
+        <td class="mono">${i.sku}</td><td>${i.name}</td>
+        <td>${i.qty}</td><td>${i.unit}</td>
+        <td><span class="badge ${i.tax_type==='exempt'?'inactive':i.tax_type==='zero'?'partial':'confirmed'}">${taxLbl(i.tax_type)}</span></td>
+        <td class="mono text-right">${money(i.unit_price)}</td>
+        <td class="mono text-right">${money(i.tax_amt||0)}</td>
+        <td class="mono text-right">${money(i.subtotal)}</td>
+      </tr>`).join('')}</tbody>
+      <tfoot>
+        <tr><td colspan="7" style="text-align:right;font-size:11px;color:var(--muted);padding:8px 16px;border-top:1px solid var(--border);">稅額合計</td>
+            <td class="mono text-right" style="border-top:1px solid var(--border);">${money(r.total_tax||0)}</td></tr>
+        <tr><td colspan="7" style="text-align:right;font-weight:600;padding:6px 16px;">未稅合計</td>
+            <td class="mono text-right" style="font-weight:700;color:var(--accent-text);">${money(r.total_amount)}</td></tr>
+      </tfoot>
+    </table>`;
+  openModal('modal-rfq-detail');
+}
+
+// ── PO ───────────────────────────────────────────────
+let poFilter = 'all';
+async function renderPO() {
+  const data = await GET('/purchase-orders');
+  const filters = ['all','confirmed','partial','received','closed'];
+  const filtered = poFilter==='all' ? data : data.filter(p=>p.status===poFilter);
+  const c = document.getElementById('content');
+  c.innerHTML = `
+    <div class="tabs">${filters.map(f=>`<button class="tab ${poFilter===f?'active':''}" onclick="poFilter='${f}';renderPO()">${f==='all'?'全部':lbl(f)}</button>`).join('')}</div>
+    <div class="section">
+      <div class="section-header"><h3>採購訂單 (${filtered.length}) <span style="font-size:12px;font-weight:400;color:var(--muted)">— 由詢價單確認後自動產生</span></h3></div>
+      <table><thead><tr><th>訂單號</th><th>來源詢價單</th><th>供應商</th><th>交貨地點</th><th>預計到貨</th><th>金額</th><th>狀態</th><th>操作</th></tr></thead>
+      <tbody>${filtered.length===0?'<tr><td colspan="8" class="empty">尚無採購訂單，請從詢價單確認後產生</td></tr>':filtered.map(p=>`<tr>
+        <td><span class="mono rfq-link" onclick="showPODetail('${p.id}')">${p.id}</span></td>
+        <td>${p.rfq_id?`<span class="mono rfq-link" onclick="showRFQDetail('${p.rfq_id}')">${p.rfq_id}</span>`:'-'}</td>
+        <td>${p.supplier_name}</td>
+        <td>${p.delivery_location||'-'}</td>
+        <td>${p.expected_date}</td>
+        <td class="mono">${money(p.total_amount)}</td>
+        <td>${badge(p.status)}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="showPODetail('${p.id}')">明細</button>
+          ${['confirmed','partial'].includes(p.status)?`<button class="btn btn-danger btn-sm" onclick="setPOStatus('${p.id}','closed')">關閉</button>`:''}
+        </td>
+      </tr>`).join('')}</tbody></table>
+    </div>`;
+}
+
+async function showPODetail(id) {
+  const p = await GET(`/purchase-orders/${id}`);
+  document.getElementById('po-detail-title').textContent = `📋 採購訂單 ${p.id}`;
+  document.getElementById('po-detail-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;margin-bottom:16px;font-size:13px;">
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">供應商</span><div style="margin-top:3px;font-weight:500;">${p.supplier_name}</div></div>
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">供應商編碼</span><div class="mono" style="margin-top:3px;">${p.supplier_code||'-'}</div></div>
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">預計到貨日</span><div style="margin-top:3px;">${p.expected_date||'-'}</div></div>
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">交貨地點</span><div style="margin-top:3px;">${p.delivery_location||'-'}</div></div>
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">狀態</span><div style="margin-top:3px;">${badge(p.status)}</div></div>
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">來源詢價單</span>
+        <div style="margin-top:3px;">${p.rfq_id
+          ? `<span class="mono rfq-link" onclick="closeModal('modal-po-detail');showRFQDetail('${p.rfq_id}')">${p.rfq_id}</span>`
+          : '-'}</div>
+      </div>
+      ${p.note?`<div style="grid-column:1/-1;"><span style="color:var(--muted);font-size:11px;font-weight:600;">備註</span><div style="margin-top:3px;">${p.note}</div></div>`:''}
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:12px 0 14px;">
+    <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;">採購明細</div>
+    <table style="font-size:12px;">
+      <thead><tr><th>SKU</th><th>品名</th><th>數量</th><th>已入庫</th><th>單位</th><th>稅別</th><th class="text-right">單價</th><th class="text-right">稅額</th><th class="text-right">小計</th></tr></thead>
+      <tbody>${(p.items||[]).map(i=>`<tr>
+        <td class="mono">${i.sku}</td>
+        <td>${i.name}</td>
+        <td>${i.qty}</td>
+        <td style="color:${i.received_qty>=i.qty?'var(--green)':i.received_qty>0?'var(--yellow)':'var(--muted)'}">
+          ${i.received_qty} ${i.received_qty>=i.qty?'✓':''}
+        </td>
+        <td>${i.unit}</td>
+        <td><span class="badge ${i.tax_type==='exempt'?'inactive':i.tax_type==='zero'?'partial':'confirmed'}">${taxLbl(i.tax_type)}</span></td>
+        <td class="mono text-right">${money(i.unit_price)}</td>
+        <td class="mono text-right">${money(i.tax_amt||0)}</td>
+        <td class="mono text-right">${money(i.subtotal)}</td>
+      </tr>`).join('')}</tbody>
+      <tfoot>
+        <tr><td colspan="8" style="text-align:right;font-size:11px;color:var(--muted);padding:8px 16px;border-top:1px solid var(--border);">稅額合計</td>
+            <td class="mono text-right" style="border-top:1px solid var(--border);">${money(p.total_tax||0)}</td></tr>
+        <tr><td colspan="8" style="text-align:right;font-weight:600;padding:6px 16px;">未稅合計</td>
+            <td class="mono text-right" style="font-weight:700;color:var(--accent-text);">${money(p.total_amount)}</td></tr>
+      </tfoot>
+    </table>
+    <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
+      ${['confirmed','partial'].includes(p.status)?`<button class="btn btn-primary btn-sm" onclick="closeModal('modal-po-detail');showPage('receiving')">前往入庫</button><button class="btn btn-danger btn-sm" onclick="setPOStatus('${p.id}','closed')">關閉採購單</button>`:''}
+    </div>`;
+  openModal('modal-po-detail');
+}
+
+// ── Receiving ─────────────────────────────────────────
+async function renderReceiving() {
+  const data = await GET('/receiving');
+  const c = document.getElementById('content');
+  c.innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+      <button class="btn btn-primary" onclick="openReceiving()">＋ 登錄入庫</button>
+    </div>
+    <div class="section">
+      <div class="section-header"><h3>入庫紀錄 (${data.length})</h3></div>
+      <table><thead><tr><th>入庫單號</th><th>採購單</th><th>品項數</th><th>入庫時間</th><th>備註</th></tr></thead>
+      <tbody>${data.length===0?'<tr><td colspan="5" class="empty">尚無入庫紀錄</td></tr>':data.reverse().map(r=>`<tr>
+        <td class="mono">${r.id}</td><td class="mono">${r.po_id}</td>
+        <td>${r.lines.length} 項</td><td>${fdate(r.created_at)}</td><td>${r.note||'-'}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>`;
+}
+
+async function openReceiving() {
+  const pos = await GET('/purchase-orders');
+  const eligible = pos.filter(p=>['confirmed','partial'].includes(p.status));
+  const sel = document.getElementById('rec-po');
+  sel.innerHTML = eligible.length ? eligible.map(p=>`<option value="${p.id}">${p.id} — ${p.supplier_name}</option>`).join('') : '<option value="">目前沒有可入庫的採購單</option>';
+  document.getElementById('rec-items-area').innerHTML = eligible.length ? '' : '<div class="empty">請先確認採購單，或檢查是否已全數入庫。</div>';
+  if (eligible.length) loadPOItems();
+  openModal('modal-receiving');
+}
+
+async function loadPOItems() {
+  const poId = document.getElementById('rec-po').value;
+  if (!poId) return;
+  const po = await GET(`/purchase-orders/${poId}`);
+  document.getElementById('rec-items-area').innerHTML = po.items.map(i=>`
+    <div class="form-row" style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:end;">
+      <div><label>${i.name} <span class="mono" style="color:var(--muted)">${i.sku}</span></label>
+        <input value="${i.sku}" readonly style="color:var(--muted)"/></div>
+      <div><label>訂購 ${i.qty}，已入 ${i.received_qty}</label>
+        <input type="number" id="rec-qty-${i.sku}" placeholder="0" max="${i.qty-i.received_qty}"/></div>
+      <div><label>單位</label><input value="${i.unit}" readonly style="color:var(--muted)"/></div>
+    </div>`).join('');
+}
+
+async function submitReceiving() {
+  const poId = document.getElementById('rec-po').value;
+  const po = await GET(`/purchase-orders/${poId}`);
+  const items = po.items.map(i=>({ sku:i.sku, received_qty:parseInt(document.getElementById(`rec-qty-${i.sku}`)?.value||0) })).filter(i=>i.received_qty>0);
+  if (!items.length) { toast('請輸入入庫數量',false); return; }
+  try {
+    await POST('/receiving', {po_id:poId, items, note:document.getElementById('rec-note').value});
+    closeModal('modal-receiving'); toast('入庫完成！庫存已更新'); renderReceiving();
+  } catch(e) { toast(e.message,false); }
+}
+
+// ── Invoices ─────────────────────────────────────────
+async function renderInvoices() {
+  const data = await GET('/invoices');
+  const c = document.getElementById('content');
+  c.innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+      <button class="btn btn-primary" onclick="openInvoice()">＋ 登錄發票</button>
+    </div>
+    <div class="section">
+      <div class="section-header"><h3>發票列表 (${data.length})</h3></div>
+      <table><thead><tr><th>發票號碼</th><th>採購單</th><th>供應商</th><th>金額</th><th>對帳結果</th><th>狀態</th><th>操作</th></tr></thead>
+      <tbody>${data.length===0?'<tr><td colspan="7" class="empty">尚無發票紀錄</td></tr>':data.reverse().map(i=>`<tr>
+        <td class="mono">${i.invoice_no}</td><td class="mono">${i.po_id}</td>
+        <td>${i.supplier_name}</td><td class="mono">${money(i.total)}</td>
+        <td style="font-size:11px;color:${i.status==='matched'||i.status==='paid'?'var(--green)':'var(--red)'}">${i.match_note}</td>
+        <td>${badge(i.status)}</td>
+        <td>${i.status==='matched'?`<button class="btn btn-confirm btn-sm" onclick="payInvoice('${i.id}')">標記付款</button>`:''}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>`;
+}
+
+async function openInvoice() {
+  const pos = await GET('/purchase-orders');
+  document.getElementById('inv-po').innerHTML = pos.length ? pos.map(p=>`<option value="${p.id}" data-amount="${p.total_amount}" data-tax="${p.total_tax||0}">${p.id} — ${p.supplier_name} (${money(p.total_amount)})</option>`).join('') : '<option value="">目前沒有採購單</option>';
+  document.getElementById('inv-po').onchange = () => { const opt = document.getElementById('inv-po').selectedOptions[0]; if (opt?.dataset.amount) { document.getElementById('inv-amount').value = opt.dataset.amount; document.getElementById('inv-tax').value = opt.dataset.tax||0; } };
+  document.getElementById('inv-po').dispatchEvent(new Event('change'));
+  document.getElementById('inv-date').value = new Date().toISOString().split('T')[0];
+  openModal('modal-invoice');
+}
+
+async function submitInvoice() {
+  try {
+    await POST('/invoices', { po_id:document.getElementById('inv-po').value, invoice_no:document.getElementById('inv-no').value, invoice_date:document.getElementById('inv-date').value, amount:parseFloat(document.getElementById('inv-amount').value), tax:parseFloat(document.getElementById('inv-tax').value)||0 });
+    closeModal('modal-invoice'); toast('發票對帳完成！'); renderInvoices();
+  } catch(e) { toast(e.message,false); }
+}
+async function payInvoice(id) { await PATCH(`/invoices/${id}/status`,{status:'paid'}); toast('已標記為付款！'); renderInvoices(); }
+
+// ── Suppliers ─────────────────────────────────────────
+let _suppliersData = [];
+async function renderSuppliers() {
+  _suppliersData = await GET('/suppliers');
+  renderSuppliersTable(_suppliersData, '');
+  searchHandlers['search-suppliers'] = q => renderSuppliersTable(_suppliersData, q);
+}
+
+function renderSuppliersTable(data, q) {
+  const filtered = q ? data.filter(s =>
+    s.name?.toLowerCase().includes(q.toLowerCase()) ||
+    s.supplier_code?.toLowerCase().includes(q.toLowerCase()) ||
+    s.contact?.toLowerCase().includes(q.toLowerCase()) ||
+    s.email?.toLowerCase().includes(q.toLowerCase())
+  ) : data;
+  document.getElementById('content').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      ${searchBar('search-suppliers','搜尋供應商名稱、編碼、聯絡人…')}
+      ${exportBtn('/export/suppliers','suppliers.csv')} <button class="btn btn-primary" onclick="openAddSupplier()">＋ 新增供應商</button>
+    </div>
+    <div class="section">
+      <div class="section-header"><h3>供應商列表 (${filtered.length} / ${data.length})</h3></div>
+      <table><thead><tr><th>公司名稱</th><th>編碼</th><th>聯絡人</th><th>電話</th><th>Email</th><th>付款天數</th><th>預設稅別</th><th>狀態</th><th>操作</th></tr></thead>
+      <tbody>${filtered.length===0?'<tr><td colspan="9" class="empty">無符合結果</td></tr>':filtered.map(s=>`<tr>
+        <td><span class="rfq-link" style="font-weight:600;" onclick="openEditSupplier('${s.id}')">${highlight(s.name,q)}</span></td>
+        <td class="mono">${highlight(s.supplier_code||'-',q)}</td>
+        <td>${highlight(s.contact,q)}</td><td class="mono">${s.phone}</td>
+        <td>${highlight(s.email,q)}</td><td>${s.payment_terms} 天</td>
+        <td>${taxLbl(s.tax_type)}</td>
+        <td>${badge(s.status)}</td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn btn-ghost btn-sm" onclick="openEditSupplier('${s.id}')">✏️ 編輯</button>
+          ${s.status==='active'?`<button class="btn btn-danger btn-sm" onclick="openDeactivate('${s.id}','${s.name}')">停用</button>`:''}
+        </td>
+      </tr>`).join('')}</tbody></table>
+    </div>`;
+  const si = document.getElementById('search-suppliers');
+  if(si){ si.value = q; si.focus(); si.setSelectionRange(q.length,q.length); }
+}
+
+function openAddSupplier() {
+  document.getElementById('supplier-modal-title').textContent = '🏭 新增供應商';
+  document.getElementById('s-id').value = '';
+  document.getElementById('s-name').value = '';
+  document.getElementById('s-code').value = '';
+  document.getElementById('s-contact').value = '';
+  document.getElementById('s-phone').value = '';
+  document.getElementById('s-email').value = '';
+  document.getElementById('s-terms').value = '30';
+  document.getElementById('s-tax').value = 'taxable';
+  openModal('modal-supplier');
+}
+
+async function openEditSupplier(id) {
+  const s = await GET(`/suppliers/${id}`);
+  document.getElementById('supplier-modal-title').textContent = '✏️ 編輯供應商';
+  document.getElementById('s-id').value      = s.id;
+  document.getElementById('s-name').value    = s.name;
+  document.getElementById('s-code').value    = s.supplier_code || '';
+  document.getElementById('s-contact').value = s.contact;
+  document.getElementById('s-phone').value   = s.phone;
+  document.getElementById('s-email').value   = s.email;
+  document.getElementById('s-terms').value   = s.payment_terms;
+  document.getElementById('s-tax').value     = s.tax_type || 'taxable';
+  openModal('modal-supplier');
+}
+
+function openDeactivate(id, name) {
+  document.getElementById('deactivate-id').value = id;
+  document.getElementById('deactivate-name').textContent = name;
+  openModal('modal-deactivate');
+}
+
+async function confirmDeactivate() {
+  const id = document.getElementById('deactivate-id').value;
+  try {
+    await PATCH(`/suppliers/${id}`, { status: 'inactive' });
+    closeModal('modal-deactivate');
+    toast('供應商已停用');
+    renderSuppliers();
+  } catch(e) { toast(e.message, false); }
+}
+
+async function submitSupplier() {
+  const id = document.getElementById('s-id').value;
+  const payload = {
+    name:          document.getElementById('s-name').value,
+    supplier_code: document.getElementById('s-code').value || null,
+    contact:       document.getElementById('s-contact').value,
+    phone:         document.getElementById('s-phone').value,
+    email:         document.getElementById('s-email').value,
+    payment_terms: parseInt(document.getElementById('s-terms').value),
+    tax_type:      document.getElementById('s-tax').value,
+  };
+  try {
+    if (id) {
+      await PATCH(`/suppliers/${id}`, payload);
+      toast('供應商已更新！');
+    } else {
+      await POST('/suppliers', payload);
+      toast('供應商已新增！');
+    }
+    closeModal('modal-supplier');
+    renderSuppliers();
+  } catch(e) { toast(e.message, false); }
+}
+
+// ── Inventory ─────────────────────────────────────────
+async function renderInventory() {
+  const data = await GET('/inventory');
+  document.getElementById('content').innerHTML = `
+    <div class="section">
+      <div class="section-header">
+        <h3>庫存列表 (${data.length} 品項)</h3>
+        <span style="font-size:12px;color:var(--muted)">⚠ 低庫存: <strong style="color:var(--red)">${data.filter(i=>i.qty<50).length}</strong> 項</span>
+      </div>
+      <table><thead><tr><th>SKU</th><th>品名</th><th>單位</th><th class="text-right">在庫數量</th><th class="text-right">單位成本</th><th>更新時間</th></tr></thead>
+      <tbody>${data.map(i=>`<tr>
+        <td class="mono">${i.sku}</td><td>${i.name}</td><td>${i.unit}</td>
+        <td class="mono text-right" style="color:${i.qty<50?'var(--red)':i.qty<200?'var(--yellow)':'var(--green)'}">${i.qty.toLocaleString()}</td>
+        <td class="mono text-right">${money(i.unit_cost)}</td>
+        <td style="color:var(--muted);font-size:12px">${fdate(i.updated_at)}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>`;
+}
+
+
+
+// ── 匯出工具 ──────────────────────────────────────────
+function exportCSV(path, filename) {
+  const a = document.createElement('a');
+  a.href = API + path;
+  a.download = filename;
+  a.click();
+  toast('匯出中…');
+}
+
+function exportBtn(path, filename, label='📥 匯出 CSV') {
+  return `<button class="btn btn-ghost btn-sm" onclick="exportCSV('${path}','${filename}')">${label}</button>`;
+}
+
+// ── 搜尋工具 ──────────────────────────────────────────
+function searchBar(id, placeholder='搜尋…') {
+  return `<div class="search-bar"><span class="search-icon">🔍</span><input id="${id}" placeholder="${placeholder}" oninput="handleSearch('${id}')" /></div>`;
+}
+
+const searchHandlers = {};
+function handleSearch(id) {
+  if (searchHandlers[id]) searchHandlers[id](document.getElementById(id)?.value || '');
+}
+
+function highlight(text, q) {
+  if (!q) return text;
+  const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+  return String(text).replace(re, '<mark style="background:rgba(124,92,252,.2);border-radius:3px;padding:0 2px;">$1</mark>');
+}
+
+// ── Products ──────────────────────────────────────────
+let _productsData = [];
+async function renderProducts() {
+  _productsData = await GET('/products');
+  renderProductsTable(_productsData, '');
+  searchHandlers['search-products'] = q => renderProductsTable(_productsData, q);
+}
+
+function renderProductsTable(data, q) {
+  const filtered = q ? data.filter(p =>
+    p.sku?.toLowerCase().includes(q.toLowerCase()) ||
+    p.name?.toLowerCase().includes(q.toLowerCase())
+  ) : data;
+  document.getElementById('content').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      ${searchBar('search-products','搜尋 SKU 或品名…')}
+      <div style="display:flex;gap:10px;">
+        ${exportBtn('/export/inventory','inventory.csv','📥 匯出庫存')} <button class="btn btn-ghost" onclick="openModal('modal-csv')">📥 CSV 匯入</button>
+        <button class="btn btn-primary" onclick="openAddProduct()">＋ 新增商品</button>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-header">
+        <h3>商品列表 (${filtered.length} / ${data.length} 筆)</h3>
+        <span style="font-size:12px;color:var(--muted)">⚠ 低庫存: <strong style="color:var(--red)">${data.filter(i=>i.qty<50).length}</strong> 項</span>
+      </div>
+      <table>
+        <thead><tr><th>SKU</th><th>品名</th><th>單位</th><th>稅別</th><th class="text-right">單位成本</th><th class="text-right">庫存數量</th><th>更新時間</th><th>操作</th></tr></thead>
+        <tbody>${filtered.length===0?'<tr><td colspan="8" class="empty">無符合結果</td></tr>':filtered.map(p=>`<tr>
+          <td class="mono">${highlight(p.sku,q)}</td>
+          <td>${highlight(p.name,q)}</td>
+          <td>${p.unit}</td>
+          <td><span class="badge ${p.tax_type==='exempt'?'inactive':p.tax_type==='zero'?'partial':'confirmed'}">${taxLbl(p.tax_type)}</span></td>
+          <td class="mono text-right">${money(p.unit_cost)}</td>
+          <td class="mono text-right" style="color:${p.qty<50?'var(--red)':p.qty<200?'var(--yellow)':'var(--green)'}">${Number(p.qty).toLocaleString()}</td>
+          <td style="color:var(--muted);font-size:12px">${fdate(p.updated_at)}</td>
+          <td><button class="btn btn-ghost btn-sm" onclick="openEditProduct('${p.sku}')">✏️ 編輯</button></td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+  const si = document.getElementById('search-products');
+  if(si){ si.value=q; si.focus(); si.setSelectionRange(q.length,q.length); }
+}
+
+function openAddProduct() {
+  document.getElementById('product-modal-title').textContent = '📦 新增商品';
+  document.getElementById('p-sku-orig').value = '';
+  document.getElementById('p-sku').value      = '';
+  document.getElementById('p-sku').readOnly   = false;
+  document.getElementById('p-name').value     = '';
+  document.getElementById('p-unit').value     = '';
+  document.getElementById('p-cost').value     = '';
+  document.getElementById('p-tax').value      = 'taxable';
+  document.getElementById('p-qty').value      = '0';
+  document.getElementById('p-qty-row').style.display = '';
+  document.getElementById('product-submit-btn').textContent = '✓ 新增商品';
+  openModal('modal-product');
+}
+
+async function openEditProduct(sku) {
+  const p = await GET(`/products/${sku}`);
+  document.getElementById('product-modal-title').textContent = '✏️ 編輯商品';
+  document.getElementById('p-sku-orig').value = p.sku;
+  document.getElementById('p-sku').value      = p.sku;
+  document.getElementById('p-sku').readOnly   = true;
+  document.getElementById('p-name').value     = p.name;
+  document.getElementById('p-unit').value     = p.unit;
+  document.getElementById('p-cost').value     = p.unit_cost;
+  document.getElementById('p-tax').value      = p.tax_type || 'taxable';
+  document.getElementById('p-qty-row').style.display = 'none';
+  document.getElementById('product-submit-btn').textContent = '✓ 儲存變更';
+  openModal('modal-product');
+}
+
+async function submitProduct() {
+  const origSku = document.getElementById('p-sku-orig').value;
+  const sku     = document.getElementById('p-sku').value.trim();
+  const name    = document.getElementById('p-name').value.trim();
+  const unit    = document.getElementById('p-unit').value.trim();
+  const cost    = parseFloat(document.getElementById('p-cost').value) || 0;
+  const tax     = document.getElementById('p-tax').value;
+  const qty     = parseFloat(document.getElementById('p-qty').value) || 0;
+  if (!sku || !name || !unit) { toast('SKU、品名、單位為必填', false); return; }
+  try {
+    if (origSku) {
+      await PATCH(`/products/${origSku}`, { name, unit, unit_cost: cost, tax_type: tax });
+      toast('商品已更新！');
+    } else {
+      await POST('/products', { sku, name, unit, unit_cost: cost, tax_type: tax, qty });
+      toast('商品已新增！');
+    }
+    closeModal('modal-product');
+    renderProducts();
+  } catch(e) { toast(e.message, false); }
+}
+
+function loadCSVFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('csv-input').value = e.target.result;
+    previewCSV();
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function previewCSV() {
+  const lines = document.getElementById('csv-input').value.trim().split('\n').filter(l=>l.trim());
+  document.getElementById('csv-preview').textContent = `共 ${lines.length} 筆資料待匯入`;
+}
+
+async function submitCSV() {
+  const raw = document.getElementById('csv-input').value.trim();
+  if (!raw) { toast('請貼上 CSV 內容', false); return; }
+  const lines = raw.split('\n').filter(l => l.trim());
+  const products = [];
+  const errors = [];
+  lines.forEach((line, i) => {
+    const cols = line.split(',').map(c => c.trim());
+    if (cols.length < 4) { errors.push(`第 ${i+1} 行格式錯誤`); return; }
+    const [sku, name, unit, cost, tax] = cols;
+    const validTax = ['taxable','zero','exempt'].includes(tax) ? tax : 'taxable';
+    products.push({ sku, name, unit, unit_cost: parseFloat(cost)||0, tax_type: validTax, qty: 0 });
+  });
+  if (errors.length) { toast(errors[0], false); return; }
+  try {
+    const res = await POST('/products/bulk', products);
+    closeModal('modal-csv');
+    document.getElementById('csv-input').value = '';
+    toast(`匯入完成！新增 ${res.created.length} 筆，略過重複 ${res.skipped.length} 筆`);
+    renderProducts();
+  } catch(e) { toast(e.message, false); }
+}
+
+
+// ══ 銷貨模組 ══════════════════════════════════════════
+
+// ── 客戶管理 ──────────────────────────────────────────
+let _customersData = [];
+async function renderCustomers() {
+  _customersData = await GET('/customers');
+  renderCustomersTable(_customersData, '');
+  searchHandlers['search-customers'] = q => renderCustomersTable(_customersData, q);
+}
+
+function renderCustomersTable(data, q) {
+  const filtered = q ? data.filter(c =>
+    c.name?.toLowerCase().includes(q.toLowerCase()) ||
+    c.customer_code?.toLowerCase().includes(q.toLowerCase()) ||
+    c.tax_id?.includes(q) ||
+    c.contact?.toLowerCase().includes(q.toLowerCase())
+  ) : data;
+  document.getElementById('content').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      ${searchBar('search-customers','搜尋客戶名稱、編碼、統編…')}
+      ${exportBtn('/export/customers','customers.csv')} <button class="btn btn-primary" onclick="openAddCustomer()">＋ 新增客戶</button>
+    </div>
+    <div class="section">
+      <div class="section-header"><h3>客戶列表 (${filtered.length} / ${data.length})</h3></div>
+      <table><thead><tr><th>公司名稱</th><th>編碼</th><th>統編</th><th>聯絡人</th><th>電話</th><th>付款天數</th><th>狀態</th><th>操作</th></tr></thead>
+      <tbody>${filtered.length===0?'<tr><td colspan="8" class="empty">無符合結果</td></tr>':filtered.map(c=>`<tr>
+        <td><span class="rfq-link" style="font-weight:600" onclick="openEditCustomer('${c.id}')">${highlight(c.name,q)}</span></td>
+        <td class="mono">${highlight(c.customer_code||'-',q)}</td>
+        <td class="mono">${highlight(c.tax_id||'-',q)}</td>
+        <td>${highlight(c.contact,q)}</td>
+        <td class="mono">${c.phone}</td>
+        <td>${c.payment_terms} 天</td>
+        <td>${badge(c.status)}</td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn btn-ghost btn-sm" onclick="openEditCustomer('${c.id}')">✏️ 編輯</button>
+          ${c.status==='active'?`<button class="btn btn-danger btn-sm" onclick="openDeactivateCustomer('${c.id}','${c.name}')">停用</button>`:''}
+        </td>
+      </tr>`).join('')}</tbody></table>
+    </div>`;
+  const si = document.getElementById('search-customers');
+  if(si){ si.value=q; si.focus(); si.setSelectionRange(q.length,q.length); }
+}
+
+function openAddCustomer() {
+  document.getElementById('customer-modal-title').textContent = '👥 新增客戶';
+  document.getElementById('c-id').value = '';
+  ['c-name','c-code','c-taxid','c-contact','c-phone','c-email','c-address','c-note'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('c-terms').value = '30';
+  document.getElementById('customer-submit-btn').textContent = '✓ 新增客戶';
+  openModal('modal-customer');
+}
+
+async function openEditCustomer(id) {
+  const c = await GET(`/customers/${id}`);
+  document.getElementById('customer-modal-title').textContent = '✏️ 編輯客戶';
+  document.getElementById('c-id').value      = c.id;
+  document.getElementById('c-name').value    = c.name;
+  document.getElementById('c-code').value    = c.customer_code||'';
+  document.getElementById('c-taxid').value   = c.tax_id||'';
+  document.getElementById('c-contact').value = c.contact;
+  document.getElementById('c-phone').value   = c.phone;
+  document.getElementById('c-email').value   = c.email;
+  document.getElementById('c-address').value = c.address||'';
+  document.getElementById('c-terms').value   = c.payment_terms;
+  document.getElementById('c-note').value    = c.note||'';
+  document.getElementById('customer-submit-btn').textContent = '✓ 儲存變更';
+  openModal('modal-customer');
+}
+
+async function submitCustomer() {
+  const id = document.getElementById('c-id').value;
+  const payload = {
+    name: document.getElementById('c-name').value,
+    customer_code: document.getElementById('c-code').value||null,
+    tax_id:   document.getElementById('c-taxid').value||null,
+    contact:  document.getElementById('c-contact').value,
+    phone:    document.getElementById('c-phone').value,
+    email:    document.getElementById('c-email').value,
+    address:  document.getElementById('c-address').value||null,
+    payment_terms: parseInt(document.getElementById('c-terms').value),
+    note:     document.getElementById('c-note').value||null,
+  };
+  try {
+    if (id) { await PATCH(`/customers/${id}`, payload); toast('客戶已更新！'); }
+    else    { await POST('/customers', payload);        toast('客戶已新增！'); }
+    closeModal('modal-customer'); renderCustomers();
+  } catch(e) { toast(e.message, false); }
+}
+
+function openDeactivateCustomer(id, name) {
+  document.getElementById('deactivate-customer-id').value = id;
+  document.getElementById('deactivate-customer-name').textContent = name;
+  openModal('modal-deactivate-customer');
+}
+
+async function confirmDeactivateCustomer() {
+  const id = document.getElementById('deactivate-customer-id').value;
+  await PATCH(`/customers/${id}`, { status: 'inactive' });
+  closeModal('modal-deactivate-customer'); toast('客戶已停用'); renderCustomers();
+}
+
+// ── 銷貨訂單 ──────────────────────────────────────────
+let soFilter = 'all';
+async function renderSalesOrders() {
+  const data = await GET('/sales-orders');
+  const filters = ['all','draft','confirmed','partial','shipped','closed'];
+  const filtered = soFilter==='all' ? data : data.filter(s=>s.status===soFilter);
+  document.getElementById('content').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div class="tabs">${filters.map(f=>`<button class="tab ${soFilter===f?'active':''}" onclick="soFilter='${f}';renderSalesOrders()">${f==='all'?'全部':soLbl(f)}</button>`).join('')}</div>
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV('/export/sales-orders','sales_orders.csv')">匯出</button> <button class="btn btn-primary" onclick="openAddSO()">＋ 新增銷貨訂單</button>
+    </div>
+    <div class="section">
+      <div class="section-header"><h3>銷貨訂單 (${filtered.length})</h3></div>
+      <table><thead><tr><th>訂單號</th><th>客戶</th><th>預計出貨</th><th>送貨地址</th><th>金額</th><th>稅額</th><th>狀態</th><th>操作</th></tr></thead>
+      <tbody>${filtered.length===0?'<tr><td colspan="8" class="empty">無資料</td></tr>':filtered.map(s=>`<tr>
+        <td><span class="mono rfq-link" onclick="showSODetail('${s.id}')">${s.id}</span></td>
+        <td>${s.customer_name}</td>
+        <td>${s.expected_date||'-'}</td>
+        <td style="font-size:12px;color:var(--muted)">${s.delivery_address||'-'}</td>
+        <td class="mono">${money(s.total_amount)}</td>
+        <td class="mono">${money(s.total_tax||0)}</td>
+        <td>${badge(s.status)}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="showSODetail('${s.id}')">明細</button>
+          ${s.status==='draft'?`<button class="btn btn-confirm btn-sm" onclick="confirmSO('${s.id}')">確認</button>`:''}
+          ${['draft','confirmed','partial'].includes(s.status)?`<button class="btn btn-danger btn-sm" onclick="closeSO('${s.id}')">關閉</button>`:''}
+        </td>
+      </tr>`).join('')}</tbody></table>
+    </div>`;
+}
+
+function soLbl(s) { return {draft:'草稿',confirmed:'已確認',partial:'部分出貨',shipped:'已出貨',closed:'已關閉'}[s]||s; }
+
+async function openAddSO() {
+  const cus = await GET('/customers');
+  const sel = document.getElementById('so-customer');
+  sel.innerHTML = cus.filter(c=>c.status==='active').map(c=>`<option value="${c.id}" data-code="${c.customer_code||''}" data-addr="${c.address||''}">${c.name}</option>`).join('');
+  sel.onchange = () => {
+    const opt = sel.options[sel.selectedIndex];
+    document.getElementById('so-cus-code').value = opt.dataset.code||'';
+    document.getElementById('so-address').value  = opt.dataset.addr||'';
+  };
+  sel.dispatchEvent(new Event('change'));
+  document.getElementById('so-expected').value = new Date(Date.now()+3*86400000).toISOString().split('T')[0];
+  document.getElementById('so-note').value = '';
+  document.getElementById('so-items').innerHTML = '';
+  addItemRow('so-items');
+  openModal('modal-so');
+}
+
+async function submitSO() {
+  const rows = document.querySelectorAll('#so-items .item-row');
+  const items = Array.from(rows).map(r=>{
+    const ins = r.querySelectorAll('input');
+    const tax = r.querySelector('select')?.value||null;
+    return { sku:ins[0].value, name:ins[1].value, qty:parseInt(ins[2].value), unit:ins[3].value, unit_price:parseFloat(ins[4].value)||0, tax_type:tax };
+  }).filter(i=>i.sku&&i.name&&i.qty>0);
+  if (!items.length) { toast('請至少新增一個品項',false); return; }
+  try {
+    await POST('/sales-orders', {
+      customer_id:      document.getElementById('so-customer').value,
+      expected_date:    document.getElementById('so-expected').value||null,
+      delivery_address: document.getElementById('so-address').value||null,
+      note:             document.getElementById('so-note').value||null,
+      items,
+    });
+    closeModal('modal-so'); toast('銷貨訂單已建立！'); soFilter='all'; renderSalesOrders();
+  } catch(e) { toast(e.message,false); }
+}
+
+async function showSODetail(id) {
+  const s = await GET(`/sales-orders/${id}`);
+  document.getElementById('so-detail-title').textContent = `🧾 銷貨訂單 ${s.id}`;
+  document.getElementById('so-detail-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;margin-bottom:16px;font-size:13px;">
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">客戶</span><div style="margin-top:3px;font-weight:500;">${s.customer_name}</div></div>
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">客戶編碼</span><div class="mono" style="margin-top:3px;">${s.customer_code||'-'}</div></div>
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">預計出貨日</span><div style="margin-top:3px;">${s.expected_date||'-'}</div></div>
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">狀態</span><div style="margin-top:3px;">${badge(s.status)}</div></div>
+      <div style="grid-column:1/-1"><span style="color:var(--muted);font-size:11px;font-weight:600;">送貨地址</span><div style="margin-top:3px;">${s.delivery_address||'-'}</div></div>
+      ${s.note?`<div style="grid-column:1/-1"><span style="color:var(--muted);font-size:11px;font-weight:600;">備註</span><div style="margin-top:3px;">${s.note}</div></div>`:''}
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:12px 0 14px;">
+    <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;">銷售明細</div>
+    <table style="font-size:12px;">
+      <thead><tr><th>SKU</th><th>品名</th><th>數量</th><th>已出貨</th><th>單位</th><th>稅別</th><th class="text-right">單價</th><th class="text-right">稅額</th><th class="text-right">小計</th></tr></thead>
+      <tbody>${(s.items||[]).map(i=>`<tr>
+        <td class="mono">${i.sku}</td><td>${i.name}</td>
+        <td>${i.qty}</td>
+        <td style="color:${i.shipped_qty>=i.qty?'var(--green)':i.shipped_qty>0?'var(--yellow)':'var(--muted)'}">${i.shipped_qty||0}${i.shipped_qty>=i.qty?' ✓':''}</td>
+        <td>${i.unit}</td>
+        <td><span class="badge ${i.tax_type==='exempt'?'inactive':i.tax_type==='zero'?'partial':'confirmed'}">${taxLbl(i.tax_type)}</span></td>
+        <td class="mono text-right">${money(i.unit_price)}</td>
+        <td class="mono text-right">${money(i.tax_amt||0)}</td>
+        <td class="mono text-right">${money(i.subtotal)}</td>
+      </tr>`).join('')}</tbody>
+      <tfoot>
+        <tr><td colspan="8" style="text-align:right;font-size:11px;color:var(--muted);padding:8px 16px;border-top:1px solid var(--border);">稅額合計</td>
+            <td class="mono text-right" style="border-top:1px solid var(--border);">${money(s.total_tax||0)}</td></tr>
+        <tr><td colspan="8" style="text-align:right;font-weight:600;padding:6px 16px;">未稅合計</td>
+            <td class="mono text-right" style="font-weight:700;color:var(--accent-text);">${money(s.total_amount)}</td></tr>
+      </tfoot>
+    </table>
+    <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
+      ${s.status==='draft'?`<button class="btn btn-confirm btn-sm" onclick="confirmSO('${s.id}')">✓ 確認訂單</button>`:''}
+      ${['confirmed','partial'].includes(s.status)?`<button class="btn btn-primary btn-sm" onclick="closeModal('modal-so-detail');showPage('shipments')">前往出貨</button>`:''}
+      ${['shipped','partial','confirmed'].includes(s.status)?`<button class="btn btn-ghost btn-sm" onclick="closeModal('modal-so-detail');showPage('sales_invoices')">開立發票</button>`:''}
+      ${['draft','confirmed','partial'].includes(s.status)?`<button class="btn btn-danger btn-sm" onclick="closeSO('${s.id}')">關閉訂單</button>`:''}
+    </div>`;
+  openModal('modal-so-detail');
+}
+
+async function confirmSO(id) {
+  await PATCH(`/sales-orders/${id}/status`, {status:'confirmed'});
+  toast('銷貨訂單已確認！'); closeModal('modal-so-detail'); renderSalesOrders();
+}
+
+// ── 出貨作業 ──────────────────────────────────────────
+async function renderShipments() {
+  const data = await GET('/shipments');
+  document.getElementById('content').innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+      <button class="btn btn-primary" onclick="openShipment()">＋ 登錄出貨</button>
+    </div>
+    <div class="section">
+      <div class="section-header"><h3>出貨紀錄 (${data.length})</h3></div>
+      <table><thead><tr><th>出貨單號</th><th>銷貨訂單</th><th>品項數</th><th>出貨時間</th><th>備註</th></tr></thead>
+      <tbody>${data.length===0?'<tr><td colspan="5" class="empty">尚無出貨紀錄</td></tr>':data.reverse().map(s=>`<tr>
+        <td class="mono">${s.id}</td>
+        <td class="mono">${s.so_id}</td>
+        <td>${s.lines.length} 項</td>
+        <td>${fdate(s.created_at)}</td>
+        <td>${s.note||'-'}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>`;
+}
+
+async function openShipment() {
+  const sos = await GET('/sales-orders');
+  const eligible = sos.filter(s=>['confirmed','partial'].includes(s.status));
+  const sel = document.getElementById('ship-so');
+  sel.innerHTML = eligible.length ? eligible.map(s=>`<option value="${s.id}">${s.id} — ${s.customer_name}</option>`).join('') : '<option value="">目前沒有可出貨的銷貨訂單</option>';
+  document.getElementById('ship-items-area').innerHTML = eligible.length ? '' : '<div class="empty">請先確認銷貨訂單，或檢查是否已全數出貨。</div>';
+  if (eligible.length) loadSOItems();
+  openModal('modal-shipment');
+}
+
+async function loadSOItems() {
+  const soId = document.getElementById('ship-so').value;
+  if (!soId) return;
+  const so = await GET(`/sales-orders/${soId}`);
+  document.getElementById('ship-items-area').innerHTML = (so.items||[]).map(i=>`
+    <div class="form-row" style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:end;">
+      <div><label>${i.name} <span class="mono" style="color:var(--muted)">${i.sku}</span></label>
+        <input value="${i.sku}" readonly style="color:var(--muted)"/></div>
+      <div><label>訂購 ${i.qty}，已出 ${i.shipped_qty||0}</label>
+        <input type="number" id="ship-qty-${i.sku}" placeholder="0" max="${i.qty-(i.shipped_qty||0)}"/></div>
+      <div><label>單位</label><input value="${i.unit}" readonly style="color:var(--muted)"/></div>
+    </div>`).join('');
+}
+
+async function submitShipment() {
+  const soId = document.getElementById('ship-so').value;
+  const so = await GET(`/sales-orders/${soId}`);
+  const items = (so.items||[]).map(i=>({sku:i.sku, shipped_qty:parseInt(document.getElementById(`ship-qty-${i.sku}`)?.value||0)})).filter(i=>i.shipped_qty>0);
+  if (!items.length) { toast('請輸入出貨數量',false); return; }
+  try {
+    await POST('/shipments', {so_id:soId, items, note:document.getElementById('ship-note').value});
+    closeModal('modal-shipment'); toast('出貨完成！庫存已扣除'); renderShipments();
+  } catch(e) { toast(e.message,false); }
+}
+
+// ── 應收帳款（銷貨發票） ────────────────────────────────
+async function renderSalesInvoices() {
+  const data = await GET('/sales-invoices');
+  const pending = data.filter(i=>i.status==='pending');
+  const received = data.filter(i=>i.status==='received');
+  const totalPending = pending.reduce((a,i)=>a+i.total,0);
+  document.getElementById('content').innerHTML = `
+    <div class="cards" style="margin-bottom:20px;">
+      <div class="card c-orange"><div class="label">待收款</div><div class="value">${pending.length}</div></div>
+      <div class="card c-red"><div class="label">待收金額</div><div class="value" style="font-size:16px;">${money(totalPending)}</div></div>
+      <div class="card c-green"><div class="label">已收款</div><div class="value">${received.length}</div></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+      <button class="btn btn-primary" onclick="openSInv()">＋ 開立發票</button>
+    </div>
+    <div class="section">
+      <div class="section-header"><h3>應收帳款列表 (${data.length})</h3></div>
+      <table><thead><tr><th>發票號碼</th><th>銷貨訂單</th><th>客戶</th><th>發票日期</th><th>到期日</th><th>金額</th><th>狀態</th><th>操作</th></tr></thead>
+      <tbody>${data.length===0?'<tr><td colspan="8" class="empty">尚無發票紀錄</td></tr>':data.reverse().map(i=>`<tr>
+        <td class="mono">${i.invoice_no}</td>
+        <td class="mono">${i.so_id}</td>
+        <td>${i.customer_name}</td>
+        <td>${i.invoice_date}</td>
+        <td style="color:${i.status==='pending'&&i.due_date<new Date().toISOString().split('T')[0]?'var(--red)':'inherit'}">${i.due_date}</td>
+        <td class="mono">${money(i.total)}</td>
+        <td>${sinvBadge(i.status)}</td>
+        <td>${i.status==='pending'?`<button class="btn btn-confirm btn-sm" onclick="markReceived('${i.id}')">標記收款</button>`:''}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>`;
+}
+
+function sinvBadge(s) { return `<span class="badge ${s==='received'?'received':s==='overdue'?'closed':'pending'}">${{pending:'待收款',received:'已收款',overdue:'逾期'}[s]||s}</span>`; }
+
+async function openSInv() {
+  const sos = await GET('/sales-orders');
+  document.getElementById('sinv-so').innerHTML = sos.length ? sos.map(s=>`<option value="${s.id}" data-amount="${s.total_amount}" data-tax="${s.total_tax||0}">${s.id} — ${s.customer_name} (${money(s.total_amount)})</option>`).join('') : '<option value="">目前沒有銷貨訂單</option>';
+  document.getElementById('sinv-so').onchange = () => { const opt = document.getElementById('sinv-so').selectedOptions[0]; if (opt?.dataset.amount) { document.getElementById('sinv-amount').value = opt.dataset.amount; document.getElementById('sinv-tax').value = opt.dataset.tax||0; } };
+  document.getElementById('sinv-so').dispatchEvent(new Event('change'));
+  const today = new Date().toISOString().split('T')[0];
+  const due30 = new Date(Date.now()+30*86400000).toISOString().split('T')[0];
+  document.getElementById('sinv-date').value = today;
+  document.getElementById('sinv-due').value  = due30;
+  openModal('modal-sinv');
+}
+
+async function submitSInv() {
+  try {
+    await POST('/sales-invoices', {
+      so_id:        document.getElementById('sinv-so').value,
+      invoice_no:   document.getElementById('sinv-no').value,
+      invoice_date: document.getElementById('sinv-date').value,
+      due_date:     document.getElementById('sinv-due').value,
+      amount:       parseFloat(document.getElementById('sinv-amount').value),
+      tax:          parseFloat(document.getElementById('sinv-tax').value)||0,
+    });
+    closeModal('modal-sinv'); toast('發票已開立！'); renderSalesInvoices();
+  } catch(e) { toast(e.message,false); }
+}
+
+async function markReceived(id) {
+  await PATCH(`/sales-invoices/${id}/status`, {status:'received'});
+  toast('已標記為收款！'); renderSalesInvoices();
+}
+
+
+// ══ 人資模組 ══════════════════════════════════════════
+
+// ── 部門管理 ──────────────────────────────────────────
+async function renderDepartments() {
+  const data = await GET('/departments');
+  document.getElementById('content').innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+      <button class="btn btn-primary" onclick="openAddDept()">＋ 新增部門</button>
+    </div>
+    <div class="section">
+      <div class="section-header"><h3>部門列表 (${data.length})</h3></div>
+      <table><thead><tr><th>部門名稱</th><th>代碼</th><th>主管</th><th>備註</th><th>操作</th></tr></thead>
+      <tbody>${data.length===0?'<tr><td colspan="5" class="empty">尚無部門</td></tr>':data.map(d=>`<tr>
+        <td><strong>${d.name}</strong></td>
+        <td class="mono">${d.code||'-'}</td>
+        <td>${d.manager||'-'}</td>
+        <td style="color:var(--muted);font-size:12px">${d.note||'-'}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="openEditDept('${d.id}')">✏️ 編輯</button></td>
+      </tr>`).join('')}</tbody></table>
+    </div>`;
+}
+
+function openAddDept() {
+  document.getElementById('dept-modal-title').textContent = '🏢 新增部門';
+  document.getElementById('dept-id').value = '';
+  ['dept-name','dept-code','dept-manager','dept-note'].forEach(id=>document.getElementById(id).value='');
+  openModal('modal-dept');
+}
+
+async function openEditDept(id) {
+  const d = await GET(`/departments/${id}`);
+  document.getElementById('dept-modal-title').textContent = '✏️ 編輯部門';
+  document.getElementById('dept-id').value      = d.id;
+  document.getElementById('dept-name').value    = d.name;
+  document.getElementById('dept-code').value    = d.code||'';
+  document.getElementById('dept-manager').value = d.manager||'';
+  document.getElementById('dept-note').value    = d.note||'';
+  openModal('modal-dept');
+}
+
+async function submitDept() {
+  const id = document.getElementById('dept-id').value;
+  const payload = { name:document.getElementById('dept-name').value, code:document.getElementById('dept-code').value||null, manager:document.getElementById('dept-manager').value||null, note:document.getElementById('dept-note').value||null };
+  try {
+    if (id) { await PATCH(`/departments/${id}`, payload); toast('部門已更新！'); }
+    else    { await POST('/departments', payload);        toast('部門已新增！'); }
+    closeModal('modal-dept'); renderDepartments();
+  } catch(e) { toast(e.message,false); }
+}
+
+// ── 員工管理 ──────────────────────────────────────────
+async function renderEmployees() {
+  const [emps, depts] = await Promise.all([GET('/employees'), GET('/departments')]);
+  const deptMap = Object.fromEntries(depts.map(d=>[d.id, d.name]));
+  const renderEmpTable = (emps, q) => {
+    const filtered = emps.filter(e => !q || e.name.includes(q) || e.emp_no?.includes(q));
+    document.getElementById('content').innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+      <button class="btn btn-primary" onclick="openAddEmployee()">＋ 新增員工</button>
+    </div>
+    <div class="section">
+      <div class="section-header"><h3>員工列表 (${filtered.filter(e=>e.status==='active').length} 在職)</h3></div>
+      <table><thead><tr><th>員工編號</th><th>姓名</th><th>部門</th><th>職稱</th><th>時薪</th><th>上班時間</th><th>狀態</th><th>操作</th></tr></thead>
+      <tbody>${filtered.map(e=>`<tr>
+        <td class="mono">${e.emp_no||'-'}</td>
+        <td><strong>${e.name}</strong></td>
+        <td>${deptMap[e.dept_id]||'-'}</td>
+        <td>${e.title||'-'}</td>
+        <td class="mono">NT$ ${e.hourly_rate}/時</td>
+        <td class="mono">${e.work_start}–${e.work_end}</td>
+        <td>${badge(e.status)}</td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn btn-ghost btn-sm" onclick="openEditEmployee('${e.id}')">✏️ 編輯</button>
+          ${e.status==='active'?`<button class="btn btn-danger btn-sm" onclick="resignEmployee('${e.id}','${e.name}')">離職</button>`:''}
+        </td>
+      </tr>`).join('')}</tbody></table>
+    </div>`;
+    const si = document.getElementById('search-employees');
+    if(si){ si.value=q; si.focus(); si.setSelectionRange(q.length,q.length); }
+  };
+  renderEmpTable(emps, '');
+  searchHandlers['search-employees'] = q => renderEmpTable(emps, q);
+}
+
+async function openAddEmployee() {
+  const depts = await GET('/departments');
+  document.getElementById('emp-modal-title').textContent = '👤 新增員工';
+  document.getElementById('emp-id').value = '';
+  document.getElementById('emp-dept').innerHTML = `<option value="">-- 選擇部門 --</option>` + depts.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  ['emp-name','emp-no','emp-title','emp-rate','emp-phone','emp-email','emp-idno','emp-bank','emp-note'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('emp-wstart').value = '09:00';
+  document.getElementById('emp-wend').value   = '18:00';
+  document.getElementById('emp-start').value  = new Date().toISOString().split('T')[0];
+  document.getElementById('emp-submit-btn').textContent = '✓ 新增員工';
+  openModal('modal-employee');
+}
+
+async function openEditEmployee(id) {
+  const [e, depts] = await Promise.all([GET(`/employees/${id}`), GET('/departments')]);
+  document.getElementById('emp-modal-title').textContent = '✏️ 編輯員工';
+  document.getElementById('emp-id').value     = e.id;
+  document.getElementById('emp-dept').innerHTML = `<option value="">-- 選擇部門 --</option>` + depts.map(d=>`<option value="${d.id}" ${d.id===e.dept_id?'selected':''}>${d.name}</option>`).join('');
+  document.getElementById('emp-name').value   = e.name;
+  document.getElementById('emp-no').value     = e.emp_no||'';
+  document.getElementById('emp-title').value  = e.title||'';
+  document.getElementById('emp-rate').value   = e.hourly_rate;
+  document.getElementById('emp-start').value  = e.start_date||'';
+  document.getElementById('emp-wstart').value = e.work_start||'09:00';
+  document.getElementById('emp-wend').value   = e.work_end||'18:00';
+  document.getElementById('emp-phone').value  = e.phone||'';
+  document.getElementById('emp-email').value  = e.email||'';
+  document.getElementById('emp-idno').value   = e.id_no||'';
+  document.getElementById('emp-bank').value   = e.bank_account||'';
+  document.getElementById('emp-note').value   = e.note||'';
+  document.getElementById('emp-submit-btn').textContent = '✓ 儲存變更';
+  openModal('modal-employee');
+}
+
+async function submitEmployee() {
+  const id = document.getElementById('emp-id').value;
+  const payload = {
+    name: document.getElementById('emp-name').value,
+    emp_no: document.getElementById('emp-no').value||null,
+    dept_id: document.getElementById('emp-dept').value||null,
+    title: document.getElementById('emp-title').value||null,
+    hourly_rate: parseFloat(document.getElementById('emp-rate').value)||0,
+    start_date: document.getElementById('emp-start').value||null,
+    work_start: document.getElementById('emp-wstart').value,
+    work_end:   document.getElementById('emp-wend').value,
+    phone: document.getElementById('emp-phone').value||null,
+    email: document.getElementById('emp-email').value||null,
+    id_no: document.getElementById('emp-idno').value||null,
+    bank_account: document.getElementById('emp-bank').value||null,
+    note: document.getElementById('emp-note').value||null,
+  };
+  try {
+    if (id) { await PATCH(`/employees/${id}`, payload); toast('員工資料已更新！'); }
+    else    { await POST('/employees', payload);        toast('員工已新增！'); }
+    closeModal('modal-employee'); renderEmployees();
+  } catch(e) { toast(e.message,false); }
+}
+
+async function resignEmployee(id, name) {
+  if (!confirm(`確認將「${name}」設為離職？`)) return;
+  await PATCH(`/employees/${id}`, {status:'resigned'});
+  toast(`${name} 已設為離職`); renderEmployees();
+}
+
+// ── 出勤紀錄 ──────────────────────────────────────────
+let attEmpFilter = '';
+let attMonthFilter = new Date().toISOString().slice(0,7);
+
+async function renderAttendance() {
+  const [recs, emps] = await Promise.all([
+    GET(`/attendance${attEmpFilter?'?emp_id='+attEmpFilter:''}`),
+    GET('/employees')
+  ]);
+  const filtered = attMonthFilter ? recs.filter(r=>r.date.startsWith(attMonthFilter)) : recs;
+  document.getElementById('content').innerHTML = `
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+      <select onchange="attEmpFilter=this.value;renderAttendance()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:13px;">
+        <option value="">全部員工</option>
+        ${emps.filter(e=>e.status==='active').map(e=>`<option value="${e.id}" ${attEmpFilter===e.id?'selected':''}>${e.name}</option>`).join('')}
+      </select>
+      <input type="month" value="${attMonthFilter}" onchange="attMonthFilter=this.value;renderAttendance()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:13px;" />
+      <div style="flex:1;"></div>
+      <button class="btn btn-primary" onclick="openAddAttendance()">＋ 登錄出勤</button>
+    </div>
+    <div class="section">
+      <div class="section-header"><h3>出勤紀錄 (${filtered.length} 筆)</h3></div>
+      <table><thead><tr><th>員工</th><th>日期</th><th>上班</th><th>下班</th><th>實際時數</th><th>加班</th><th>遲到</th><th>早退</th><th>正常薪資</th><th>加班費</th><th>扣款</th><th>小計</th></tr></thead>
+      <tbody>${filtered.length===0?'<tr><td colspan="12" class="empty">無出勤紀錄</td></tr>':filtered.map(r=>`<tr>
+        <td>${r.emp_name}</td>
+        <td class="mono">${r.date}</td>
+        <td class="mono">${r.clock_in}</td>
+        <td class="mono">${r.clock_out}</td>
+        <td class="mono">${r.actual_hours}h</td>
+        <td class="mono" style="color:${r.ot_hours>0?'var(--accent-text)':'inherit'}">${r.ot_hours>0?r.ot_hours+'h':'-'}</td>
+        <td style="color:${r.late_min>0?'var(--red)':'var(--muted)'}">${r.late_min>0?r.late_min+'分':'-'}</td>
+        <td style="color:${r.early_min>0?'var(--red)':'var(--muted)'}">${r.early_min>0?r.early_min+'分':'-'}</td>
+        <td class="mono">${money(r.normal_pay)}</td>
+        <td class="mono" style="color:var(--accent-text)">${r.ot_pay>0?money(r.ot_pay):'-'}</td>
+        <td class="mono" style="color:var(--red)">${r.deduct>0?'-'+money(r.deduct):'-'}</td>
+        <td class="mono" style="font-weight:600">${money(r.total_pay)}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>`;
+}
+
+async function openAddAttendance() {
+  const emps = await GET('/employees');
+  document.getElementById('att-emp').innerHTML = emps.filter(e=>e.status==='active').map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+  document.getElementById('att-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('att-in').value  = '09:00';
+  document.getElementById('att-out').value = '18:00';
+  document.getElementById('att-holiday').checked = false;
+  document.getElementById('att-note').value = '';
+  openModal('modal-attendance');
+}
+
+async function submitAttendance() {
+  try {
+    await POST('/attendance', {
+      emp_id:     document.getElementById('att-emp').value,
+      date:       document.getElementById('att-date').value,
+      clock_in:   document.getElementById('att-in').value,
+      clock_out:  document.getElementById('att-out').value,
+      is_holiday: document.getElementById('att-holiday').checked,
+      note:       document.getElementById('att-note').value||null,
+    });
+    closeModal('modal-attendance'); toast('出勤紀錄已儲存！'); renderAttendance();
+  } catch(e) { toast(e.message,false); }
+}
+
+// ── 請假管理 ──────────────────────────────────────────
+let leaveFilter = 'all';
+async function renderLeaves() {
+  const [lvs, types] = await Promise.all([GET('/leaves'), GET('/leaves/types')]);
+  const filters = ['all','pending','approved','rejected'];
+  const filtered = leaveFilter==='all' ? lvs : lvs.filter(l=>l.status===leaveFilter);
+  document.getElementById('content').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div class="tabs">${filters.map(f=>`<button class="tab ${leaveFilter===f?'active':''}" onclick="leaveFilter='${f}';renderLeaves()">${{all:'全部',pending:'待審',approved:'已核准',rejected:'已拒絕'}[f]}</button>`).join('')}</div>
+      <button class="btn btn-primary" onclick="openAddLeave()">＋ 申請請假</button>
+    </div>
+    <div class="section">
+      <div class="section-header"><h3>請假紀錄 (${filtered.length})</h3></div>
+      <table><thead><tr><th>員工</th><th>假別</th><th>開始日</th><th>結束日</th><th>天數</th><th>給薪</th><th>事由</th><th>狀態</th><th>操作</th></tr></thead>
+      <tbody>${filtered.length===0?'<tr><td colspan="9" class="empty">無資料</td></tr>':filtered.map(l=>`<tr>
+        <td>${l.emp_name}</td>
+        <td>${l.leave_name}</td>
+        <td>${l.start_date}</td>
+        <td>${l.end_date}</td>
+        <td>${l.days} 天</td>
+        <td>${l.pay_rate===1?'全薪':l.pay_rate===0.5?'半薪':'無薪'}</td>
+        <td style="font-size:12px;color:var(--muted)">${l.reason||'-'}</td>
+        <td>${leaveBadge(l.status)}</td>
+        <td style="display:flex;gap:4px;">
+          ${l.status==='pending'?`<button class="btn btn-confirm btn-sm" onclick="approveLeave('${l.id}')">核准</button><button class="btn btn-danger btn-sm" onclick="rejectLeave('${l.id}')">拒絕</button>`:''}
+        </td>
+      </tr>`).join('')}</tbody></table>
+    </div>`;
+}
+
+function leaveBadge(s) { return `<span class="badge ${s==='approved'?'received':s==='rejected'?'closed':'pending'}">${{pending:'待審核',approved:'已核准',rejected:'已拒絕',cancelled:'已取消'}[s]||s}</span>`; }
+
+async function openAddLeave() {
+  const [emps, types] = await Promise.all([GET('/employees'), GET('/leaves/types')]);
+  document.getElementById('leave-emp').innerHTML   = emps.filter(e=>e.status==='active').map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+  document.getElementById('leave-type').innerHTML  = types.map(t=>`<option value="${t.type}">${t.name}（${t.pay_rate===1?'全薪':t.pay_rate===0.5?'半薪':'無薪'}）${t.max_days?'最多'+t.max_days+'天':''}</option>`).join('');
+  document.getElementById('leave-start').value = new Date().toISOString().split('T')[0];
+  document.getElementById('leave-end').value   = new Date().toISOString().split('T')[0];
+  document.getElementById('leave-days').value  = '1';
+  document.getElementById('leave-reason').value = '';
+  openModal('modal-leave');
+}
+
+async function submitLeave() {
+  try {
+    await POST('/leaves', {
+      emp_id:     document.getElementById('leave-emp').value,
+      leave_type: document.getElementById('leave-type').value,
+      start_date: document.getElementById('leave-start').value,
+      end_date:   document.getElementById('leave-end').value,
+      days:       parseFloat(document.getElementById('leave-days').value),
+      reason:     document.getElementById('leave-reason').value||null,
+    });
+    closeModal('modal-leave'); toast('請假申請已送出！'); renderLeaves();
+  } catch(e) { toast(e.message,false); }
+}
+
+async function approveLeave(id) { await PATCH(`/leaves/${id}`, {status:'approved'}); toast('已核准！'); renderLeaves(); }
+async function rejectLeave(id)  { await PATCH(`/leaves/${id}`, {status:'rejected'}); toast('已拒絕'); renderLeaves(); }
+
+// ── 薪資管理 ──────────────────────────────────────────
+async function renderPayroll() {
+  const data = await GET('/payroll');
+  const pending  = data.filter(p=>p.status==='draft').reduce((a,p)=>a+p.gross,0);
+  document.getElementById('content').innerHTML = `
+    <div class="cards" style="margin-bottom:20px;">
+      <div class="card c-purple"><div class="label">薪資單總數</div><div class="value">${data.length}</div></div>
+      <div class="card c-yellow"><div class="label">待發放</div><div class="value">${data.filter(p=>p.status!=='paid').length}</div></div>
+      <div class="card c-green"><div class="label">已發放</div><div class="value">${data.filter(p=>p.status==='paid').length}</div></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+      ${exportBtn('/export/payroll','payroll.csv')} <button class="btn btn-primary" onclick="openCalcPayroll()">＋ 計算薪資</button>
+    </div>
+    <div class="section">
+      <div class="section-header"><h3>薪資單列表 (${data.length})</h3></div>
+      <table><thead><tr><th>員工</th><th>月份</th><th>出勤天數</th><th>正常薪資</th><th>加班費</th><th>請假薪資</th><th>扣款</th><th>實發金額</th><th>狀態</th><th>操作</th></tr></thead>
+      <tbody>${data.length===0?'<tr><td colspan="10" class="empty">尚無薪資單</td></tr>':data.map(p=>`<tr>
+        <td>${p.emp_name}</td>
+        <td class="mono">${p.year_month}</td>
+        <td>${p.att_days} 天</td>
+        <td class="mono">${money(p.normal_pay)}</td>
+        <td class="mono" style="color:var(--accent-text)">${p.ot_pay>0?money(p.ot_pay):'-'}</td>
+        <td class="mono">${p.leave_pay>0?money(p.leave_pay):'-'}</td>
+        <td class="mono" style="color:var(--red)">${p.deduct>0?'-'+money(p.deduct):'-'}</td>
+        <td class="mono" style="font-weight:700;color:var(--accent-text)">${money(p.gross)}</td>
+        <td>${payBadge(p.status)}</td>
+        <td style="display:flex;gap:4px;">
+          <button class="btn btn-ghost btn-sm" onclick="showPayslip('${p.id}')">明細</button>
+          ${p.status==='draft'?`<button class="btn btn-confirm btn-sm" onclick="confirmPayroll('${p.id}')">確認</button>`:''}
+          ${p.status==='confirmed'?`<button class="btn btn-primary btn-sm" onclick="payPayroll('${p.id}')">發放</button>`:''}
+        </td>
+      </tr>`).join('')}</tbody></table>
+    </div>`;
+}
+
+function payBadge(s) { return `<span class="badge ${s==='paid'?'received':s==='confirmed'?'confirmed':'draft'}">${{draft:'草稿',confirmed:'已確認',paid:'已發放'}[s]||s}</span>`; }
+
+async function openCalcPayroll() {
+  const emps = await GET('/employees');
+  document.getElementById('pay-emp').innerHTML = emps.filter(e=>e.status==='active').map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+  document.getElementById('pay-month').value = new Date().toISOString().slice(0,7);
+  document.getElementById('pay-note').value  = '';
+  openModal('modal-payroll');
+}
+
+async function submitPayroll() {
+  try {
+    await POST('/payroll/calculate', {
+      emp_id:     document.getElementById('pay-emp').value,
+      year_month: document.getElementById('pay-month').value,
+      note:       document.getElementById('pay-note').value||null,
+    });
+    closeModal('modal-payroll'); toast('薪資已計算！'); renderPayroll();
+  } catch(e) { toast(e.message,false); }
+}
+
+async function showPayslip(id) {
+  const p = await GET(`/payroll/${id}`);
+  document.getElementById('payslip-title').textContent = `💵 ${p.emp_name} ${p.year_month} 薪資單`;
+  document.getElementById('payslip-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;font-size:13px;margin-bottom:16px;">
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">員工</span><div style="margin-top:3px;font-weight:500;">${p.emp_name}</div></div>
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">月份</span><div style="margin-top:3px;" class="mono">${p.year_month}</div></div>
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">時薪</span><div style="margin-top:3px;" class="mono">NT$ ${p.hourly_rate}/時</div></div>
+      <div><span style="color:var(--muted);font-size:11px;font-weight:600;">出勤天數</span><div style="margin-top:3px;">${p.att_days} 天 / ${p.total_hours} 時</div></div>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:12px 0;">
+    <table style="font-size:13px;">
+      <tr><td style="padding:8px 0;color:var(--muted)">正常薪資</td><td class="mono text-right">${money(p.normal_pay)}</td></tr>
+      <tr><td style="padding:8px 0;color:var(--muted)">加班費（${p.ot_hours}h）</td><td class="mono text-right" style="color:var(--accent-text)">${money(p.ot_pay)}</td></tr>
+      <tr><td style="padding:8px 0;color:var(--muted)">請假薪資（${p.leave_days}天）</td><td class="mono text-right">${money(p.leave_pay)}</td></tr>
+      <tr><td style="padding:8px 0;color:var(--red)">遲到/早退扣款</td><td class="mono text-right" style="color:var(--red)">-${money(p.deduct)}</td></tr>
+      <tr style="border-top:2px solid var(--border);">
+        <td style="padding:12px 0;font-weight:700;font-size:15px;">實發金額</td>
+        <td class="mono text-right" style="font-weight:700;font-size:15px;color:var(--accent-text)">${money(p.gross)}</td>
+      </tr>
+    </table>`;
+  openModal('modal-payslip');
+}
+
+async function confirmPayroll(id) { await PATCH(`/payroll/${id}/status`,{status:'confirmed'}); toast('薪資單已確認！'); renderPayroll(); }
+async function payPayroll(id)     { await PATCH(`/payroll/${id}/status`,{status:'paid'});      toast('薪資已發放！');   renderPayroll(); }
+
+
+// ══ 報表中心 ══════════════════════════════════════════
+let reportTab = 'purchase';
+let abcMetric = 'amount';  // amount | qty
+let abcA = 70, abcB = 90;
+let chartInstances = {};
+
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+function pct(val, total) { return total ? ((val/total)*100).toFixed(1) : '0.0'; }
+function diff(curr, prev) {
+  if (!prev) return { val: null, html: '<span style="color:var(--muted)">-</span>' };
+  const p = ((curr - prev) / prev * 100).toFixed(1);
+  const up = curr >= prev;
+  return { val: p, html: `<span style="color:${up?'var(--green)':'var(--red)'};font-weight:600">${up?'▲':'▼'} ${Math.abs(p)}%</span>` };
+}
+
+async function renderReports() {
+  document.getElementById('content').innerHTML = `
+    <div class="tabs" style="margin-bottom:20px;">
+      <button class="tab ${reportTab==='purchase'?'active':''}" onclick="reportTab='purchase';renderReports()">📦 進貨分析</button>
+      <button class="tab ${reportTab==='sales'?'active':''}"    onclick="reportTab='sales';renderReports()">🧾 銷貨分析</button>
+      <button class="tab ${reportTab==='inventory'?'active':''}" onclick="reportTab='inventory';renderReports()">🗄️ 庫存分析</button>
+      <button class="tab ${reportTab==='payroll'?'active':''}"  onclick="reportTab='payroll';renderReports()">💵 薪資分析</button>
+      <button class="tab ${reportTab==='abc'?'active':''}"      onclick="reportTab='abc';renderReports()">🅰 ABC 分析</button>
+    </div>
+    <div id="report-body"><div class="empty">載入中…</div></div>`;
+
+  const renders = {
+    purchase: renderPurchaseReport,
+    sales:    renderSalesReport,
+    inventory:renderInventoryReport,
+    payroll:  renderPayrollReport,
+    abc:      renderABCReport,
+  };
+  await renders[reportTab]();
+}
+
+// ── 工具：依月份彙整 ──────────────────────────────────
+function groupByMonth(items, dateField, amtField) {
+  const map = {};
+  items.forEach(i => {
+    const ym = (i[dateField]||'').slice(0,7);
+    if (!ym) return;
+    if (!map[ym]) map[ym] = 0;
+    map[ym] += Number(i[amtField]||0);
+  });
+  return map;
+}
+
+function last12Months() {
+  const months = [];
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  }
+  return months;
+}
+
+function momYoy(map, ym) {
+  const curr = map[ym] || 0;
+  const prev = map[ym.slice(0,4) + '-' + String(parseInt(ym.slice(5,7))-1).padStart(2,'0')] ||
+               map[(parseInt(ym.slice(0,4))-0) + '-' + String(parseInt(ym.slice(5,7))-1).padStart(2,'0')] || 0;
+  const yoyM = `${parseInt(ym.slice(0,4))-1}-${ym.slice(5,7)}`;
+  const yoy  = map[yoyM] || 0;
+  return { curr, mom: diff(curr, prev), yoy: diff(curr, yoy) };
+}
+
+function renderBarLineChart(canvasId, labels, barData, lineData, barLabel, lineLabel) {
+  destroyChart(canvasId);
+  if (typeof Chart === 'undefined') {
+    const el = document.getElementById(canvasId);
+    if (el) el.outerHTML = `<div class="empty" style="height:220px;display:flex;align-items:center;justify-content:center;">圖表元件未載入，請確認網路或 Chart.js CDN。</div>`;
+    return;
+  }
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  chartInstances[canvasId] = new Chart(ctx, {
+    data: {
+      labels,
+      datasets: [
+        { type:'bar',  label: barLabel,  data: barData,  backgroundColor:'rgba(124,92,252,0.25)', borderColor:'rgba(124,92,252,0.8)', borderWidth:2, yAxisID:'y' },
+        { type:'line', label: lineLabel, data: lineData, borderColor:'#059669', backgroundColor:'rgba(5,150,105,0.08)', borderWidth:2, pointRadius:3, tension:0.3, yAxisID:'y1' },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'top' } },
+      scales:{
+        y:  { position:'left',  ticks:{ callback: v=>'$'+v.toLocaleString() } },
+        y1: { position:'right', grid:{ drawOnChartArea:false }, ticks:{ callback: v=>'$'+v.toLocaleString() } },
+      }
+    }
+  });
+}
+
+function renderDonutChart(canvasId, labels, data, colors) {
+  destroyChart(canvasId);
+  if (typeof Chart === 'undefined') {
+    const el = document.getElementById(canvasId);
+    if (el) el.outerHTML = `<div class="empty" style="height:220px;display:flex;align-items:center;justify-content:center;">圖表元件未載入，請確認網路或 Chart.js CDN。</div>`;
+    return;
+  }
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  chartInstances[canvasId] = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets:[{ data, backgroundColor: colors||labels.map((_,i)=>`hsl(${250+i*30},70%,${60+i*5}%)`), borderWidth:2 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right' } } }
+  });
+}
+
+// ── 進貨分析 ──────────────────────────────────────────
+async function renderPurchaseReport() {
+  const [pos, sups] = await Promise.all([GET('/purchase-orders'), GET('/suppliers')]);
+  const months = last12Months();
+  const amtMap = groupByMonth(pos, 'created_at', 'total_amount');
+  const currM  = months[months.length-1];
+  const { curr, mom, yoy } = momYoy(amtMap, currM);
+  const supMap = {};
+  pos.forEach(p => { supMap[p.supplier_name] = (supMap[p.supplier_name]||0) + p.total_amount; });
+  const supEntries = Object.entries(supMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
+
+  document.getElementById('report-body').innerHTML = `
+    <div class="cards" style="margin-bottom:20px;">
+      <div class="card c-purple"><div class="label">本月採購金額</div><div class="value" style="font-size:18px;">${money(curr)}</div></div>
+      <div class="card c-blue"><div class="label">環比 MoM</div><div class="value" style="font-size:20px;">${mom.html}</div></div>
+      <div class="card c-green"><div class="label">同期比 YoY</div><div class="value" style="font-size:20px;">${yoy.html}</div></div>
+      <div class="card c-yellow"><div class="label">本月訂單數</div><div class="value">${pos.filter(p=>p.created_at?.startsWith(currM)).length}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;">
+      <div class="section">
+        <div class="section-header"><h3>採購金額趨勢（近12個月）</h3></div>
+        <div style="padding:16px;height:280px;"><canvas id="chart-po-trend"></canvas></div>
+      </div>
+      <div class="section">
+        <div class="section-header"><h3>供應商採購佔比</h3></div>
+        <div style="padding:16px;height:280px;"><canvas id="chart-sup-pie"></canvas></div>
+      </div>
+    </div>
+    <div class="section" style="margin-top:16px;">
+      <div class="section-header"><h3>各月 MoM / YoY 對比</h3></div>
+      <table><thead><tr><th>月份</th><th class="text-right">採購金額</th><th class="text-right">環比 MoM</th><th class="text-right">同期比 YoY</th></tr></thead>
+      <tbody>${months.slice(-6).reverse().map(m=>{
+        const r = momYoy(amtMap, m);
+        return `<tr><td class="mono">${m}</td><td class="mono text-right">${money(r.curr)}</td><td class="text-right">${r.mom.html}</td><td class="text-right">${r.yoy.html}</td></tr>`;
+      }).join('')}</tbody></table>
+    </div>`;
+
+  renderBarLineChart('chart-po-trend', months, months.map(m=>amtMap[m]||0), months.map(m=>amtMap[m]||0), '採購金額', '趨勢');
+  renderDonutChart('chart-sup-pie', supEntries.map(e=>e[0]), supEntries.map(e=>e[1]));
+}
+
+// ── 銷貨分析 ──────────────────────────────────────────
+async function renderSalesReport() {
+  const [sos, cus] = await Promise.all([GET('/sales-orders'), GET('/customers')]);
+  const months = last12Months();
+  const amtMap = groupByMonth(sos, 'created_at', 'total_amount');
+  const currM  = months[months.length-1];
+  const { curr, mom, yoy } = momYoy(amtMap, currM);
+  const cusMap = {};
+  sos.forEach(s => { cusMap[s.customer_name] = (cusMap[s.customer_name]||0) + s.total_amount; });
+  const cusEntries = Object.entries(cusMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
+
+  document.getElementById('report-body').innerHTML = `
+    <div class="cards" style="margin-bottom:20px;">
+      <div class="card c-purple"><div class="label">本月銷貨金額</div><div class="value" style="font-size:18px;">${money(curr)}</div></div>
+      <div class="card c-blue"><div class="label">環比 MoM</div><div class="value" style="font-size:20px;">${mom.html}</div></div>
+      <div class="card c-green"><div class="label">同期比 YoY</div><div class="value" style="font-size:20px;">${yoy.html}</div></div>
+      <div class="card c-orange"><div class="label">本月訂單數</div><div class="value">${sos.filter(s=>s.created_at?.startsWith(currM)).length}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;">
+      <div class="section">
+        <div class="section-header"><h3>銷貨金額趨勢（近12個月）</h3></div>
+        <div style="padding:16px;height:280px;"><canvas id="chart-so-trend"></canvas></div>
+      </div>
+      <div class="section">
+        <div class="section-header"><h3>客戶銷貨佔比</h3></div>
+        <div style="padding:16px;height:280px;"><canvas id="chart-cus-pie"></canvas></div>
+      </div>
+    </div>
+    <div class="section" style="margin-top:16px;">
+      <div class="section-header"><h3>各月 MoM / YoY 對比</h3></div>
+      <table><thead><tr><th>月份</th><th class="text-right">銷貨金額</th><th class="text-right">環比 MoM</th><th class="text-right">同期比 YoY</th></tr></thead>
+      <tbody>${months.slice(-6).reverse().map(m=>{
+        const r = momYoy(amtMap, m);
+        return `<tr><td class="mono">${m}</td><td class="mono text-right">${money(r.curr)}</td><td class="text-right">${r.mom.html}</td><td class="text-right">${r.yoy.html}</td></tr>`;
+      }).join('')}</tbody></table>
+    </div>`;
+
+  renderBarLineChart('chart-so-trend', months, months.map(m=>amtMap[m]||0), months.map(m=>amtMap[m]||0), '銷貨金額', '趨勢');
+  renderDonutChart('chart-cus-pie', cusEntries.map(e=>e[0]), cusEntries.map(e=>e[1]));
+}
+
+// ── 庫存分析 ──────────────────────────────────────────
+async function renderInventoryReport() {
+  const inv = await GET('/inventory');
+  const totalVal  = inv.reduce((a,i)=>a+i.qty*i.unit_cost, 0);
+  const lowStock  = inv.filter(i=>i.qty<50);
+  const zeroStock = inv.filter(i=>i.qty===0);
+  const sorted    = [...inv].sort((a,b)=>(b.qty*b.unit_cost)-(a.qty*a.unit_cost));
+
+  document.getElementById('report-body').innerHTML = `
+    <div class="cards" style="margin-bottom:20px;">
+      <div class="card c-purple"><div class="label">庫存品項數</div><div class="value">${inv.length}</div></div>
+      <div class="card c-blue"><div class="label">庫存總值</div><div class="value" style="font-size:16px;">${money(totalVal)}</div></div>
+      <div class="card c-yellow"><div class="label">低庫存品項</div><div class="value" style="color:var(--yellow)">${lowStock.length}</div></div>
+      <div class="card c-red"><div class="label">零庫存品項</div><div class="value" style="color:var(--red)">${zeroStock.length}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="section">
+        <div class="section-header"><h3>庫存金額佔比（前8項）</h3></div>
+        <div style="padding:16px;height:280px;"><canvas id="chart-inv-pie"></canvas></div>
+      </div>
+      <div class="section">
+        <div class="section-header"><h3>庫存品項明細</h3></div>
+        <table style="font-size:12px;">
+          <thead><tr><th>品名</th><th class="text-right">庫存</th><th class="text-right">單位成本</th><th class="text-right">庫存值</th><th class="text-right">佔比</th></tr></thead>
+          <tbody>${sorted.map(i=>{
+            const val = i.qty*i.unit_cost;
+            return `<tr>
+              <td>${i.name}</td>
+              <td class="mono text-right" style="color:${i.qty<50?'var(--red)':i.qty<200?'var(--yellow)':'var(--green)'}">${i.qty}</td>
+              <td class="mono text-right">${money(i.unit_cost)}</td>
+              <td class="mono text-right">${money(val)}</td>
+              <td class="mono text-right">${pct(val,totalVal)}%</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+
+  const top8 = sorted.slice(0,8);
+  renderDonutChart('chart-inv-pie', top8.map(i=>i.name), top8.map(i=>i.qty*i.unit_cost));
+}
+
+// ── 薪資分析 ──────────────────────────────────────────
+async function renderPayrollReport() {
+  const [pays, depts, emps] = await Promise.all([GET('/payroll'), GET('/departments'), GET('/employees')]);
+  const months = last12Months();
+  const amtMap = {};
+  pays.forEach(p => { amtMap[p.year_month] = (amtMap[p.year_month]||0) + p.gross; });
+  const currM = months[months.length-1];
+  const { curr, mom, yoy } = momYoy(amtMap, currM);
+
+  // 部門薪資統計
+  const deptMap = Object.fromEntries(depts.map(d=>[d.id, d.name]));
+  const deptPay = {};
+  pays.forEach(p => {
+    const emp = emps.find(e=>e.id===p.emp_id);
+    const dname = deptMap[emp?.dept_id] || '未分配';
+    deptPay[dname] = (deptPay[dname]||0) + p.gross;
+  });
+  const deptEntries = Object.entries(deptPay).sort((a,b)=>b[1]-a[1]);
+
+  document.getElementById('report-body').innerHTML = `
+    <div class="cards" style="margin-bottom:20px;">
+      <div class="card c-purple"><div class="label">本月薪資總額</div><div class="value" style="font-size:18px;">${money(curr)}</div></div>
+      <div class="card c-blue"><div class="label">環比 MoM</div><div class="value" style="font-size:20px;">${mom.html}</div></div>
+      <div class="card c-green"><div class="label">同期比 YoY</div><div class="value" style="font-size:20px;">${yoy.html}</div></div>
+      <div class="card c-yellow"><div class="label">已發放薪資單</div><div class="value">${pays.filter(p=>p.status==='paid').length}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;">
+      <div class="section">
+        <div class="section-header"><h3>薪資趨勢（近12個月）</h3></div>
+        <div style="padding:16px;height:280px;"><canvas id="chart-pay-trend"></canvas></div>
+      </div>
+      <div class="section">
+        <div class="section-header"><h3>部門薪資佔比</h3></div>
+        <div style="padding:16px;height:280px;"><canvas id="chart-dept-pie"></canvas></div>
+      </div>
+    </div>
+    <div class="section" style="margin-top:16px;">
+      <div class="section-header"><h3>各月 MoM / YoY 對比</h3></div>
+      <table><thead><tr><th>月份</th><th class="text-right">薪資總額</th><th class="text-right">環比 MoM</th><th class="text-right">同期比 YoY</th></tr></thead>
+      <tbody>${months.slice(-6).reverse().map(m=>{
+        const r = momYoy(amtMap, m);
+        return `<tr><td class="mono">${m}</td><td class="mono text-right">${money(r.curr)}</td><td class="text-right">${r.mom.html}</td><td class="text-right">${r.yoy.html}</td></tr>`;
+      }).join('')}</tbody></table>
+    </div>`;
+
+  renderBarLineChart('chart-pay-trend', months, months.map(m=>amtMap[m]||0), months.map(m=>amtMap[m]||0), '薪資總額', '趨勢');
+  renderDonutChart('chart-dept-pie', deptEntries.map(e=>e[0]), deptEntries.map(e=>e[1]));
+}
+
+// ── ABC 分析 ──────────────────────────────────────────
+async function renderABCReport() {
+  const [sos_raw, inv] = await Promise.all([GET('/sales-orders'), GET('/inventory')]);
+
+  // 彙整各商品銷售金額與數量
+  const soAll = await Promise.all(sos_raw.map(s=>GET(`/sales-orders/${s.id}`)));
+  const skuAmt = {}, skuQty = {};
+  soAll.forEach(so => (so.items||[]).forEach(i => {
+    skuAmt[i.sku] = (skuAmt[i.sku]||0) + (i.subtotal||0);
+    skuQty[i.sku] = (skuQty[i.sku]||0) + (i.qty||0);
+  }));
+
+  // 加入庫存但未銷售的商品
+  inv.forEach(i => {
+    if (!skuAmt[i.sku]) skuAmt[i.sku] = 0;
+    if (!skuQty[i.sku]) skuQty[i.sku] = 0;
+  });
+
+  const skuName = Object.fromEntries(inv.map(i=>[i.sku, i.name]));
+
+  document.getElementById('report-body').innerHTML = `
+    <div style="display:flex;gap:16px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span style="font-size:13px;color:var(--muted)">分類依據：</span>
+        <button class="btn ${abcMetric==='amount'?'btn-primary':'btn-ghost'} btn-sm" onclick="abcMetric='amount';renderABCReport()">銷貨金額</button>
+        <button class="btn ${abcMetric==='qty'?'btn-primary':'btn-ghost'} btn-sm" onclick="abcMetric='qty';renderABCReport()">銷貨數量</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span style="font-size:13px;color:var(--muted)">A 類界定：</span>
+        <input id="abc-a" type="number" value="${abcA}" min="1" max="99" style="width:60px;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-size:13px;" onchange="abcA=parseInt(this.value);renderABCBody(skuData)" />
+        <span style="font-size:13px;color:var(--muted)">% &nbsp; B 類界定：</span>
+        <input id="abc-b" type="number" value="${abcB}" min="1" max="100" style="width:60px;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-size:13px;" onchange="abcB=parseInt(this.value);renderABCBody(skuData)" />
+        <span style="font-size:13px;color:var(--muted)">%</span>
+        <button class="btn btn-primary btn-sm" onclick="abcA=parseInt(document.getElementById('abc-a').value);abcB=parseInt(document.getElementById('abc-b').value);renderABCReport()">套用</button>
+      </div>
+    </div>
+    <div id="abc-content"><div class="empty">計算中…</div></div>`;
+
+  const metric = abcMetric === 'amount' ? skuAmt : skuQty;
+  const skuData = Object.entries(metric)
+    .map(([sku, val]) => ({ sku, name: skuName[sku]||sku, val }))
+    .sort((a,b)=>b.val-a.val);
+
+  renderABCBody(skuData);
+}
+
+function renderABCBody(skuData) {
+  const total = skuData.reduce((a,s)=>a+s.val, 0);
+  let cumul = 0;
+  const items = skuData.map(s => {
+    cumul += s.val;
+    const cumulPct = total ? (cumul/total*100) : 0;
+    const cls = cumulPct <= abcA ? 'A' : cumulPct <= abcB ? 'B' : 'C';
+    return { ...s, cumulPct, cls };
+  });
+
+  const aItems = items.filter(i=>i.cls==='A');
+  const bItems = items.filter(i=>i.cls==='B');
+  const cItems = items.filter(i=>i.cls==='C');
+  const aVal   = aItems.reduce((a,i)=>a+i.val,0);
+  const bVal   = bItems.reduce((a,i)=>a+i.val,0);
+  const cVal   = cItems.reduce((a,i)=>a+i.val,0);
+
+  document.getElementById('abc-content').innerHTML = `
+    <div class="cards" style="margin-bottom:20px;">
+      <div class="card" style="border-left:4px solid #7c5cfc;">
+        <div class="label">A 類（前 ${abcA}%）</div>
+        <div class="value c-purple" style="font-size:20px;">${aItems.length} 項</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;">${abcMetric==='amount'?money(aVal):aVal.toLocaleString()}</div>
+      </div>
+      <div class="card" style="border-left:4px solid #2563eb;">
+        <div class="label">B 類（${abcA}–${abcB}%）</div>
+        <div class="value" style="font-size:20px;color:var(--blue)">${bItems.length} 項</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;">${abcMetric==='amount'?money(bVal):bVal.toLocaleString()}</div>
+      </div>
+      <div class="card" style="border-left:4px solid #9ca3af;">
+        <div class="label">C 類（${abcB}% 以後）</div>
+        <div class="value" style="font-size:20px;color:var(--muted)">${cItems.length} 項</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;">${abcMetric==='amount'?money(cVal):cVal.toLocaleString()}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:3fr 2fr;gap:16px;margin-bottom:16px;">
+      <div class="section">
+        <div class="section-header"><h3>帕累托圖</h3></div>
+        <div style="padding:16px;height:300px;"><canvas id="chart-abc-pareto"></canvas></div>
+      </div>
+      <div class="section">
+        <div class="section-header"><h3>ABC 分佈</h3></div>
+        <div style="padding:16px;height:300px;"><canvas id="chart-abc-pie"></canvas></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-header"><h3>商品 ABC 明細</h3></div>
+      <table style="font-size:12px;">
+        <thead><tr><th>排名</th><th>SKU</th><th>品名</th><th class="text-right">${abcMetric==='amount'?'銷貨金額':'銷貨數量'}</th><th class="text-right">佔比</th><th class="text-right">累積佔比</th><th>分類</th></tr></thead>
+        <tbody>${items.map((i,idx)=>`<tr>
+          <td class="mono">${idx+1}</td>
+          <td class="mono">${i.sku}</td>
+          <td>${i.name}</td>
+          <td class="mono text-right">${abcMetric==='amount'?money(i.val):i.val.toLocaleString()}</td>
+          <td class="mono text-right">${pct(i.val,total)}%</td>
+          <td class="mono text-right">${i.cumulPct.toFixed(1)}%</td>
+          <td><span class="badge ${i.cls==='A'?'confirmed':i.cls==='B'?'partial':'draft'}">${i.cls} 類</span></td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+
+  // 帕累托圖
+  destroyChart('chart-abc-pareto');
+  const pCtx = document.getElementById('chart-abc-pareto').getContext('2d');
+  const top15 = items.slice(0,15);
+  let pc = 0;
+  const cumulArr = top15.map(i=>{ pc+=i.val; return total?(pc/total*100).toFixed(1):0; });
+  chartInstances['chart-abc-pareto'] = new Chart(pCtx, {
+    data: {
+      labels: top15.map(i=>i.sku),
+      datasets: [
+        { type:'bar',  label: abcMetric==='amount'?'銷貨金額':'銷貨數量', data: top15.map(i=>i.val), backgroundColor: top15.map(i=>i.cls==='A'?'rgba(124,92,252,0.7)':i.cls==='B'?'rgba(37,99,235,0.5)':'rgba(156,163,175,0.4)'), yAxisID:'y' },
+        { type:'line', label:'累積佔比%', data: cumulArr, borderColor:'#dc2626', backgroundColor:'transparent', borderWidth:2, pointRadius:3, tension:0.1, yAxisID:'y1' },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'top' } },
+      scales:{
+        y:  { position:'left' },
+        y1: { position:'right', min:0, max:100, grid:{ drawOnChartArea:false }, ticks:{ callback:v=>v+'%' } }
+      }
+    }
+  });
+
+  // ABC 圓餅
+  renderDonutChart('chart-abc-pie',
+    ['A 類','B 類','C 類'],
+    [aVal, bVal, cVal],
+    ['rgba(124,92,252,0.8)','rgba(37,99,235,0.6)','rgba(156,163,175,0.5)']
+  );
+}
+
+
+// ── First-use Guide ───────────────────────────────────
+const guideSteps = [
+  { page:'dashboard', selector:'.flow-bar', title:'先看整體流程', body:'這裡用零售業 demo 情境串起「詢價 → 採購單 → 入庫 → 發票對帳」，可以先了解目前採購進度。' },
+  { page:'rfq', selector:'#content .btn-primary', title:'建立詢價單', body:'從「新增詢價單」開始，選供應商、商品、數量與預計到貨日；確認後會自動產生採購訂單。' },
+  { page:'po', selector:'#content table', title:'追蹤採購訂單', body:'點採購單號可看明細。若採購單已確認，可以接著到入庫作業登錄到貨數量。' },
+  { page:'receiving', selector:'#content .btn-primary', title:'登錄入庫', body:'選擇已確認或部分入庫的採購單，輸入實收數量後，系統會同步更新庫存。' },
+  { page:'sales_orders', selector:'#content .btn-primary', title:'建立銷貨訂單', body:'零售 demo 也補上門市、電商與企業團購情境，可建立銷貨訂單並接續出貨、開立應收發票。' },
+  { page:'reports', selector:'#content .tabs', title:'查看報表中心', body:'報表中心可快速看採購、銷售、庫存、薪資與 ABC 商品分析，適合 demo 時展示管理視角。' },
+];
+let guideIndex = 0;
+function ensureGuideDom() {
+  if (document.getElementById('guide-backdrop')) return;
+  document.body.insertAdjacentHTML('beforeend', `<div id="guide-backdrop" class="guide-backdrop"></div><div id="guide-card" class="guide-card"><h3 id="guide-title"></h3><p id="guide-body"></p><div class="guide-actions"><button class="btn btn-ghost btn-sm" onclick="endGuide()">略過</button><span class="guide-step-count" id="guide-count"></span><div style="display:flex;gap:6px;"><button class="btn btn-ghost btn-sm" onclick="prevGuide()">上一步</button><button class="btn btn-primary btn-sm" onclick="nextGuide()" id="guide-next">下一步</button></div></div></div>`);
+}
+async function startGuide(manual=false) {
+  ensureGuideDom();
+  if (!manual && localStorage.getItem('erpDemoGuideDone') === '1') return;
+  guideIndex = 0;
+  await renderGuideStep();
+}
+async function renderGuideStep() {
+  const step = guideSteps[guideIndex];
+  document.querySelectorAll('.guide-highlight').forEach(el=>el.classList.remove('guide-highlight'));
+  if (step.page) { showPage(step.page); await new Promise(r=>setTimeout(r, 450)); }
+  const target = document.querySelector(step.selector);
+  document.getElementById('guide-backdrop').classList.add('open');
+  const card = document.getElementById('guide-card');
+  card.classList.add('open');
+  document.getElementById('guide-title').textContent = step.title;
+  document.getElementById('guide-body').textContent = step.body;
+  document.getElementById('guide-count').textContent = `${guideIndex + 1} / ${guideSteps.length}`;
+  document.getElementById('guide-next').textContent = guideIndex === guideSteps.length - 1 ? '完成' : '下一步';
+  if (target) {
+    target.classList.add('guide-highlight');
+    const rect = target.getBoundingClientRect();
+    const left = Math.min(Math.max(16, rect.right + 18), window.innerWidth - 376);
+    const top = Math.min(Math.max(16, rect.top), window.innerHeight - 230);
+    card.style.left = `${left}px`;
+    card.style.top = `${top}px`;
+  } else {
+    card.style.left = 'calc(50vw - 180px)';
+    card.style.top = '120px';
+  }
+}
+function nextGuide() { if (guideIndex >= guideSteps.length - 1) return endGuide(); guideIndex += 1; renderGuideStep(); }
+function prevGuide() { if (guideIndex <= 0) return; guideIndex -= 1; renderGuideStep(); }
+function endGuide() {
+  localStorage.setItem('erpDemoGuideDone', '1');
+  document.querySelectorAll('.guide-highlight').forEach(el=>el.classList.remove('guide-highlight'));
+  document.getElementById('guide-backdrop')?.classList.remove('open');
+  document.getElementById('guide-card')?.classList.remove('open');
+}
+// ── Init ──────────────────────────────────────────────
+showPage('dashboard');
+setTimeout(()=>startGuide(false), 650);
+</script>
+
+<!-- ══ Modal: 新增/編輯客戶 ══ -->
+<div class="overlay" id="modal-customer">
+  <div class="modal" style="width:580px;">
+    <h3 id="customer-modal-title">👥 新增客戶</h3>
+    <input type="hidden" id="c-id" />
+    <div class="form-grid">
+      <div class="form-row"><label>公司名稱 *</label><input id="c-name" placeholder="台北科技股份有限公司" /></div>
+      <div class="form-row"><label>客戶編碼</label><input id="c-code" placeholder="CUS-001" /></div>
+      <div class="form-row"><label>統一編號</label><input id="c-taxid" placeholder="12345678" /></div>
+      <div class="form-row"><label>聯絡人 *</label><input id="c-contact" placeholder="林小明" /></div>
+      <div class="form-row"><label>電話</label><input id="c-phone" placeholder="02-9876-5432" /></div>
+      <div class="form-row"><label>Email</label><input id="c-email" type="email" placeholder="contact@example.com" /></div>
+      <div class="form-row full"><label>地址</label><input id="c-address" placeholder="台北市信義區..." /></div>
+      <div class="form-row full"><label>付款條件（天數）</label><input id="c-terms" type="number" value="30" /></div>
+      <div class="form-row full"><label>備註</label><textarea id="c-note" rows="2" placeholder="選填"></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-customer')">取消</button>
+      <button class="btn btn-primary" id="customer-submit-btn" onclick="submitCustomer()">✓ 儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: 停用客戶確認 ══ -->
+<div class="overlay" id="modal-deactivate-customer">
+  <div class="modal" style="width:420px;">
+    <h3>⚠️ 確認停用客戶</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:8px;">即將停用客戶：</p>
+    <p style="font-size:15px;font-weight:600;margin-bottom:24px;" id="deactivate-customer-name"></p>
+    <input type="hidden" id="deactivate-customer-id" />
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-deactivate-customer')">取消</button>
+      <button class="btn btn-danger" onclick="confirmDeactivateCustomer()">確認停用</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: 新增銷貨訂單 ══ -->
+<div class="overlay" id="modal-so">
+  <div class="modal" style="width:640px;">
+    <h3>🧾 新增銷貨訂單</h3>
+    <div class="form-grid">
+      <div class="form-row"><label>客戶 *</label><select id="so-customer"></select></div>
+      <div class="form-row"><label>客戶編碼</label><input id="so-cus-code" readonly style="color:var(--muted)" /></div>
+      <div class="form-row"><label>預計出貨日</label><input id="so-expected" type="date" /></div>
+      <div class="form-row full"><label>送貨地址</label><input id="so-address" placeholder="自動帶入客戶地址，可修改" /></div>
+      <div class="form-row full"><label>備註</label><textarea id="so-note" rows="2" placeholder="選填"></textarea></div>
+    </div>
+    <hr class="modal-divider" />
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <label style="font-size:12px;color:var(--muted);font-weight:600;">銷售明細</label>
+      <button class="btn btn-ghost btn-sm" onclick="addItemRow('so-items')">＋ 新增品項</button>
+    </div>
+    <div class="items-header"><span>SKU</span><span>品名</span><span>數量</span><span>單位</span><span>單價</span><span>稅別</span><span></span></div>
+    <div id="so-items"></div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-so')">取消</button>
+      <button class="btn btn-primary" onclick="submitSO()">✓ 建立訂單</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: 出貨登錄 ══ -->
+<div class="overlay" id="modal-shipment">
+  <div class="modal">
+    <h3>🚚 登錄出貨</h3>
+    <div class="form-row"><label>銷貨訂單</label><select id="ship-so" onchange="loadSOItems()"></select></div>
+    <div id="ship-items-area"></div>
+    <div class="form-row"><label>備註</label><input id="ship-note" placeholder="選填" /></div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-shipment')">取消</button>
+      <button class="btn btn-confirm" onclick="submitShipment()">✓ 確認出貨</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: 銷貨發票 ══ -->
+<div class="overlay" id="modal-sinv">
+  <div class="modal">
+    <h3>💰 開立銷貨發票</h3>
+    <div class="form-grid">
+      <div class="form-row full"><label>銷貨訂單</label><select id="sinv-so"></select></div>
+      <div class="form-row"><label>發票號碼</label><input id="sinv-no" placeholder="AB-12345678" /></div>
+      <div class="form-row"><label>發票日期</label><input id="sinv-date" type="date" /></div>
+      <div class="form-row"><label>到期日</label><input id="sinv-due" type="date" /></div>
+      <div class="form-row"><label>未稅金額</label><input id="sinv-amount" type="number" step="0.01" placeholder="0.00" /></div>
+      <div class="form-row"><label>稅額</label><input id="sinv-tax" type="number" step="0.01" value="0" /></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-sinv')">取消</button>
+      <button class="btn btn-primary" onclick="submitSInv()">✓ 開立發票</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: 銷貨訂單詳情 ══ -->
+<div class="overlay" id="modal-so-detail">
+  <div class="modal" style="width:680px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <h3 style="margin:0;" id="so-detail-title">🧾 銷貨訂單詳情</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-so-detail')">✕ 關閉</button>
+    </div>
+    <div id="so-detail-body"></div>
+  </div>
+</div>
+
+
+<!-- ══ HR: 新增/編輯部門 ══ -->
+<div class="overlay" id="modal-dept">
+  <div class="modal" style="width:420px;">
+    <h3 id="dept-modal-title">🏢 新增部門</h3>
+    <input type="hidden" id="dept-id" />
+    <div class="form-row"><label>部門名稱 *</label><input id="dept-name" placeholder="研發部" /></div>
+    <div class="form-row"><label>部門代碼</label><input id="dept-code" placeholder="RD" /></div>
+    <div class="form-row"><label>主管</label><input id="dept-manager" placeholder="王小明" /></div>
+    <div class="form-row"><label>備註</label><textarea id="dept-note" rows="2"></textarea></div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-dept')">取消</button>
+      <button class="btn btn-primary" onclick="submitDept()">✓ 儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HR: 新增/編輯員工 ══ -->
+<div class="overlay" id="modal-employee">
+  <div class="modal" style="width:620px;">
+    <h3 id="emp-modal-title">👤 新增員工</h3>
+    <input type="hidden" id="emp-id" />
+    <div class="form-grid">
+      <div class="form-row"><label>姓名 *</label><input id="emp-name" placeholder="王小明" /></div>
+      <div class="form-row"><label>員工編號</label><input id="emp-no" placeholder="EMP-001" /></div>
+      <div class="form-row"><label>部門</label><select id="emp-dept"></select></div>
+      <div class="form-row"><label>職稱</label><input id="emp-title" placeholder="工程師" /></div>
+      <div class="form-row"><label>時薪（元）</label><input id="emp-rate" type="number" step="0.01" placeholder="250" /></div>
+      <div class="form-row"><label>到職日</label><input id="emp-start" type="date" /></div>
+      <div class="form-row"><label>正常上班時間</label><input id="emp-wstart" type="time" value="09:00" /></div>
+      <div class="form-row"><label>正常下班時間</label><input id="emp-wend" type="time" value="18:00" /></div>
+      <div class="form-row"><label>電話</label><input id="emp-phone" placeholder="0912-345-678" /></div>
+      <div class="form-row"><label>Email</label><input id="emp-email" placeholder="emp@company.tw" /></div>
+      <div class="form-row"><label>身份證號</label><input id="emp-idno" placeholder="A123456789" /></div>
+      <div class="form-row"><label>銀行帳號</label><input id="emp-bank" placeholder="轉帳帳號" /></div>
+      <div class="form-row full"><label>備註</label><textarea id="emp-note" rows="2"></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-employee')">取消</button>
+      <button class="btn btn-primary" id="emp-submit-btn" onclick="submitEmployee()">✓ 儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HR: 打卡登錄 ══ -->
+<div class="overlay" id="modal-attendance">
+  <div class="modal" style="width:480px;">
+    <h3>🕐 登錄出勤</h3>
+    <div class="form-grid">
+      <div class="form-row full"><label>員工</label><select id="att-emp"></select></div>
+      <div class="form-row"><label>日期</label><input id="att-date" type="date" /></div>
+      <div class="form-row"><label></label></div>
+      <div class="form-row"><label>上班時間</label><input id="att-in" type="time" /></div>
+      <div class="form-row"><label>下班時間</label><input id="att-out" type="time" /></div>
+      <div class="form-row full">
+        <div class="checkbox-row">
+          <input type="checkbox" id="att-holiday" />
+          <label for="att-holiday">假日出勤（2倍時薪）</label>
+        </div>
+      </div>
+      <div class="form-row full"><label>備註</label><input id="att-note" placeholder="選填" /></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-attendance')">取消</button>
+      <button class="btn btn-primary" onclick="submitAttendance()">✓ 儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HR: 請假申請 ══ -->
+<div class="overlay" id="modal-leave">
+  <div class="modal" style="width:480px;">
+    <h3>📅 申請請假</h3>
+    <div class="form-grid">
+      <div class="form-row full"><label>員工</label><select id="leave-emp"></select></div>
+      <div class="form-row full">
+        <label>假別</label>
+        <select id="leave-type"></select>
+      </div>
+      <div class="form-row"><label>開始日期</label><input id="leave-start" type="date" /></div>
+      <div class="form-row"><label>結束日期</label><input id="leave-end" type="date" /></div>
+      <div class="form-row full"><label>天數</label><input id="leave-days" type="number" step="0.5" placeholder="1" /></div>
+      <div class="form-row full"><label>事由</label><textarea id="leave-reason" rows="2" placeholder="選填"></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-leave')">取消</button>
+      <button class="btn btn-primary" onclick="submitLeave()">✓ 送出申請</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HR: 計算薪資 ══ -->
+<div class="overlay" id="modal-payroll">
+  <div class="modal" style="width:420px;">
+    <h3>💵 計算薪資</h3>
+    <div class="form-row"><label>員工</label><select id="pay-emp"></select></div>
+    <div class="form-row"><label>薪資月份</label><input id="pay-month" type="month" /></div>
+    <div class="form-row"><label>備註</label><input id="pay-note" placeholder="選填" /></div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-payroll')">取消</button>
+      <button class="btn btn-primary" onclick="submitPayroll()">✓ 計算</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HR: 薪資單詳情 ══ -->
+<div class="overlay" id="modal-payslip">
+  <div class="modal" style="width:520px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <h3 style="margin:0;" id="payslip-title">💵 薪資單</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-payslip')">✕ 關閉</button>
+    </div>
+    <div id="payslip-body"></div>
+  </div>
+</div>
+
+</body>
+</html>
